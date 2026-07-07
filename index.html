@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Ben Health OS</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">AI Personal Health Dashboard</p>
+        <h1>Ben Health OS</h1>
+        <p class="subtitle">98kg → 80kg｜專屬減脂儀表板</p>
+      </div>
+      <div class="score-card">
+        <span>今日分數</span>
+        <strong id="dailyScore">95</strong>
+        <small>/100</small>
+      </div>
+    </header>
+
+    <section class="grid">
+      <article class="card weight-card">
+        <h2>體重進度</h2>
+        <div class="weight-row">
+          <strong id="currentWeight">98.0</strong><span>kg</span>
+          <small>目標 80kg</small>
+        </div>
+        <div class="progress"><div id="weightProgress"></div></div>
+        <p id="weightText" class="hint"></p>
+      </article>
+
+      <article class="card">
+        <h2>下一餐建議</h2>
+        <p id="nextMealMain" class="big-text">晚餐以清爽蛋白＋蔬菜為主，澱粉減量。</p>
+        <div id="nextMealChips" class="chips"></div>
+      </article>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>今日量化</h2>
+        <div class="metric"><span>預估熱量</span><strong id="calories">520 kcal</strong></div>
+        <div class="metric"><span>蛋白質</span><strong id="protein">35 g</strong></div>
+        <div class="metric"><span>飲水</span><strong id="water">1600 / 2200 ml</strong></div>
+        <div class="metric"><span>運動</span><strong id="exercise">彈力繩 15 min</strong></div>
+      </article>
+
+      <article class="card">
+        <h2>本週健康雷達</h2>
+        <div id="radarList" class="radar-list"></div>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2>今日餐點紀錄</h2>
+      <div id="mealList" class="meal-list"></div>
+    </section>
+
+    <section class="card">
+      <h2>新增餐點</h2>
+      <div class="form-grid">
+        <label>餐別
+          <select id="mealType">
+            <option value="breakfast">早餐</option>
+            <option value="lunch" selected>午餐</option>
+            <option value="dinner">晚餐</option>
+            <option value="snack">加餐</option>
+          </select>
+        </label>
+        <label>餐點描述
+          <input id="mealDesc" placeholder="例：紫米飯、白肉魚、蒸蛋、花椰菜" />
+        </label>
+        <label>熱量 kcal
+          <input id="mealKcal" type="number" placeholder="例：550" />
+        </label>
+        <label>蛋白質 g
+          <input id="mealProtein" type="number" placeholder="例：35" />
+        </label>
+        <label>雞蛋等效顆數
+          <input id="mealEgg" type="number" step="0.5" placeholder="例：1.5" />
+        </label>
+        <label>評分
+          <input id="mealScore" type="number" placeholder="例：95" />
+        </label>
+      </div>
+      <button id="addMealBtn">加入紀錄並更新儀表板</button>
+      <p class="hint">v1 先手動輸入；下一版再接「拍照 → AI 辨識 → 自動帶入」。</p>
+    </section>
+  </main>
+  <script src="./app.js"></script>
+</body>
+</html>
