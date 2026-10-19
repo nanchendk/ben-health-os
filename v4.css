@@ -1,0 +1,52 @@
+/* Ben Health OS v4.0 — white / navy / champagne, responsive.
+   Presentation DNA adapted to web; existing authentication and Firestore code unchanged. */
+:root{color-scheme:light!important;--paper:#fff!important;--ink:#0f2a4f!important;--muted:#5a6577!important;--rule:#e4e8ef!important;--surface:#f4f6fa!important}
+*{box-sizing:border-box}
+body{background:#fff!important;color:#0f2a4f!important;font-family:"Microsoft JhengHei","Noto Sans TC",sans-serif!important;line-height:1.55}
+.app{max-width:1280px!important;padding:clamp(12px,2.5vw,32px)!important}
+.hero{background:#fff!important;color:#0f2a4f!important;border-radius:0!important;border-bottom:1px solid #e4e8ef!important;padding:18px 0 22px!important;display:flex;justify-content:space-between;gap:16px;align-items:center}
+.hero h1{font-size:clamp(1.6rem,3vw,2.3rem);margin:.2rem 0;color:#0f2a4f}
+.eyebrow{font-size:.7rem;color:#ad8842!important;letter-spacing:.16em;font-weight:700}
+.subtitle,.hint{color:#5a6577!important}
+.card{background:#fff!important;color:#0f2a4f!important;border:1px solid #e4e8ef!important;border-radius:16px!important;box-shadow:none!important;padding:clamp(16px,2vw,26px)!important}
+.card h2{font-size:1.22rem;color:#0f2a4f;margin-top:0}
+.card h2::after{content:"";display:block;width:38px;height:3px;background:#c9a961;margin-top:12px}
+button{background:#0f2a4f!important;color:white!important;border-radius:9px!important}
+button:hover{background:#1b3a6f!important}
+input,textarea,select{background:#fff!important;color:#0f2a4f!important;border:1px solid #d9dee6!important;border-radius:8px!important}
+.metric,.quick-box{background:#f4f6fa!important;border:0!important;border-radius:12px!important}
+.metric strong,.big-number{color:#0f2a4f!important;font-variant-numeric:tabular-nums}
+.metric-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important}
+#summaryCards{grid-template-columns:repeat(2,minmax(0,1fr))}
+#trendSection,#metricsSection,#weeklySection{scroll-margin-top:18px}
+#bodyArchive,#labArchive{border-left:3px solid #c9a961!important}
+.week-table th{background:#f4f6fa!important;color:#0f2a4f!important}
+.week-table td{border-color:#e4e8ef!important}
+@media(max-width:700px){.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.hero{align-items:flex-start;flex-direction:column}#summaryCards{grid-template-columns:1fr}}
+@media(max-width:420px){.app{padding:12px!important}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.metric{padding:12px!important}.metric strong{font-size:1.05rem!important}}
+
+.insight-panel{margin-top:18px;padding:18px 20px;background:#f4f6fa;border-left:3px solid #c9a961;border-radius:8px}.insight-panel h3{margin:0 0 12px;color:#0f2a4f;font-size:1rem}.insight-panel p{margin:8px 0;color:#5a6577;line-height:1.7}
+
+/* v4 reference layout: navy masthead and two concept modules */
+.hero{background:#0f2a4f!important;color:#fff!important;border:0!important;border-radius:14px!important;padding:26px 30px!important;margin-bottom:16px!important}
+.hero h1{color:#fff!important;font-size:clamp(1.55rem,3vw,2.3rem)!important}
+.hero .subtitle{color:#e0e8f4!important}
+.hero .eyebrow{color:#c9a961!important;letter-spacing:.06em}
+.hero #accountArea button{background:#233d60!important;color:#fff!important}
+.v4-module-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:18px 10px 12px}
+.v4-module{display:flex;flex-direction:column;gap:8px;padding:18px 20px;border:1px solid #e5e9ef;border-radius:12px;color:#0f2a4f;text-decoration:none;background:#fff;min-width:0}
+.v4-module:hover,.v4-module:focus-visible{border-color:#c9a961;box-shadow:0 5px 20px #0f2a4f12}
+.v4-module-icon{font-size:24px;color:#0f2a4f}
+.v4-module strong{font-size:clamp(1.1rem,2vw,1.4rem)}
+.v4-module small{color:#66758c;font-size:.85rem;line-height:1.5}
+.v4-rule{margin:0 10px 22px;color:#596a80;font-size:.85rem}
+@media(max-width:650px){.v4-module-nav{grid-template-columns:1fr}.hero{padding:22px!important}}
+
+/* Information-first dashboard: summary and comparisons precede optional data entry. */
+#summaryCards{margin-top:10px}
+#summaryCards .card{border-top:3px solid #c9a961}
+#summaryCards .big-number{color:#0f2a4f}
+#progressSection,#qualitySection,#metricsSection,#trendSection,#weeklySection{scroll-margin-top:16px}
+#quickSection{margin-top:28px;border:1px solid #dbe2eb;background:#f8fafc!important}
+#quickSection::before{content:"補充操作｜手動輸入（非每日主要流程）";display:block;color:#66758c;font-size:.78rem;letter-spacing:.04em;margin-bottom:10px}
+#bodyArchive,#labArchive{scroll-margin-top:20px}

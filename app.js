@@ -1,3 +1,4 @@
+import {bodyInsights,labInsights} from "./health-insights.js";
 import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import {getFirestore,collection,doc,setDoc,getDocs,query,orderBy,limit,getDoc,addDoc,serverTimestamp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
@@ -107,7 +108,7 @@ function renderMetrics(rows){
  renderWeekDailyDetails(recent,start,end);
 }
 $("metricWeek").addEventListener("change",()=>renderMetrics(cachedDailyRows));
-function setupLayout(){const root=document.getElementById("dashboardView");for(const id of ["quickSection","dailySection","sleepGutSection","progressSection","qualitySection","summaryCards","metricsSection","trendSection","weeklySection","recentSection","bodyArchive","labArchive","backupArchive"]){const el=document.getElementById(id);if(el)root.append(el);}const quick=document.getElementById("quickSection"),daily=document.getElementById("dailySection"),sleep=document.getElementById("sleepGutSection");if(quick&&daily&&sleep){const details=document.createElement("details"),summary=document.createElement("summary");summary.textContent="補充細節｜睡眠、飲食、腸胃";details.append(summary,daily,sleep);quick.append(details);const date=document.getElementById("recordDate").closest("label");quick.insertBefore(date,quick.querySelector(".quick-grid"));const weight=document.getElementById("weight").closest("label");quick.insertBefore(weight,quick.querySelector(".quick-grid"));const button=document.createElement("button");button.type="button";button.textContent="儲存今日紀錄";button.onclick=()=>document.getElementById("dailyForm").requestSubmit();quick.append(button);}const backup=document.getElementById("backupArchive"),imp=document.getElementById("importSection");if(backup&&imp)backup.append(imp);}
+function setupLayout(){const root=document.getElementById("dashboardView");for(const id of ["summaryCards","progressSection","qualitySection","metricsSection","trendSection","weeklySection","closeoutSection","recentSection","bodyArchive","labArchive","medicalImportSection","quickSection","dailySection","sleepGutSection","backupArchive"]){const el=document.getElementById(id);if(el)root.append(el);}const quick=document.getElementById("quickSection"),daily=document.getElementById("dailySection"),sleep=document.getElementById("sleepGutSection");if(quick&&daily&&sleep){const details=document.createElement("details"),summary=document.createElement("summary");summary.textContent="補充細節｜睡眠、飲食、腸胃";details.append(summary,daily,sleep);quick.append(details);const date=document.getElementById("recordDate").closest("label");quick.insertBefore(date,quick.querySelector(".quick-grid"));const weight=document.getElementById("weight").closest("label");quick.insertBefore(weight,quick.querySelector(".quick-grid"));const button=document.createElement("button");button.type="button";button.textContent="儲存今日紀錄";button.onclick=()=>document.getElementById("dailyForm").requestSubmit();quick.append(button);}const backup=document.getElementById("backupArchive"),imp=document.getElementById("importSection");if(backup&&imp)backup.append(imp);}
 function elapsed(start,end){const today=taipeiDate();if(today<start)return 0;return Math.round((new Date((today<end?today:end)+"T12:00:00Z")-new Date(start+"T12:00:00Z"))/86400000)+1;}
 setupLayout();
 const foodPresets={soy:{label:"無糖高纖豆漿 400 ml",protein:14,kcal:120},eggs:{label:"雞蛋 2 顆",protein:13,kcal:150},whey:{label:"乳清 1 份",protein:25,kcal:120},tofu:{label:"豆乾 1 份",protein:10,kcal:110}};
@@ -198,11 +199,25 @@ function renderWeeklyOverview(weeks,rows){
  }
  root.append(table);
 }
+
+function renderCloseoutState(rows){
+ const status=$("closeoutStatus"),target=$("closeoutRecent");if(!status||!target)return;
+ const finalized=rows.filter(x=>x.closeoutStatus==="final"||x.status==="final"||x.finalized===true);
+ const latest=finalized.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0];
+ const legacy=rows.filter(x=>!["final","draft"].includes(x.closeoutStatus)&&x.status!=="final"&&x.finalized!==true).length;
+ status.textContent=latest?"最近正式同步："+latest.date+"｜已辨識正式結案 "+finalized.length+" 天；未標註狀態 "+legacy+" 天":"尚未辨識到具有正式結案標記的同步紀錄；舊版紀錄不會自動視為已結案。";
+ target.replaceChildren();
+ const p=document.createElement("p");p.className="hint";
+ p.textContent="同步規則：ChatGPT 回報 → 每日正式結案 → 私人 Firestore → 網站顯示。未結案不納入正式週比較；尚未接通 ChatGPT 自動寫入，現階段不會假裝即時同步。";
+ target.append(p);
+}
+
 async function refresh(){
  const uid=user.uid;
  const results=await getDocs(query(collection(db,"users",uid,"daily"),orderBy("date","desc"),limit(200)));
  const rows=results.docs.map(s=>s.data());
  cachedDailyRows=rows;
+ renderCloseoutState(rows);
  renderTrend(rows.slice(0,30));renderWeek15(rows);renderV3Summary(rows);
  const list=$("recentRecords");list.replaceChildren();
  let found=false;
@@ -255,6 +270,11 @@ $("importBtn").onclick=async()=>{
   status.textContent="檔案讀取完成，正在驗證資料格式…";
   if(!["ben-health-os-import-v1","ben-health-os-import-v2"].includes(payload.format)||!Array.isArray(payload.daily)||(!payload.week&&!Array.isArray(payload.weeks)))throw Error("檔案格式不符");
   if(payload.daily.length>200)throw Error("單次最多200筆");
+  const dates=payload.daily.map(r=>r.date);
+  if(new Set(dates).size!==dates.length)throw Error("匯入檔含重複日期");
+  if(payload.daily.some(r=>!/^\d{4}-\d{2}-\d{2}$/.test(r.date)))throw Error("每日日期格式錯誤");
+  const review=payload.daily.map(r=>r.date+" "+(typeof r.weightKg==="number"?r.weightKg+"kg":"未記錄體重")).join("\\n");
+  if(!window.confirm("即將匯入私人 Firestore：\\n每日 "+payload.daily.length+" 筆、週報 "+(Array.isArray(payload.weeks)?payload.weeks.length:1)+" 份。\\n既有紀錄僅補空值，不覆蓋原數據。\\n\\n"+review+"\\n\\n確認後才寫入，是否繼續？")){status.textContent="已取消，未寫入資料";return;}
   let saved=0,skipped=0,enriched=0;
   status.textContent="格式驗證通過，共 "+payload.daily.length+" 筆每日紀錄，準備匯入…";
   for(const [index,record] of payload.daily.entries()){
@@ -272,7 +292,7 @@ $("importBtn").onclick=async()=>{
     continue;
    }
    const {date,weightKg=null,sleepHours=null,waterMl=null,gutNotes=null,notes=null,foodNotes=null,exerciseNotes=null,proteinG=null,caloriesKcal=null}=record;
-   await setDoc(ref,{date,weightKg,sleepHours,waterMl,gutNotes,notes,foodNotes,exerciseNotes,proteinG,caloriesKcal,source:"historical-import",updatedAt:serverTimestamp()});saved++;
+   await setDoc(ref,{date,weightKg,sleepHours,waterMl,gutNotes,notes,foodNotes,exerciseNotes,proteinG,caloriesKcal,source:"historical-import",closeoutStatus:"final",finalized:true,updatedAt:serverTimestamp()});saved++;
   }
   status.textContent="每日紀錄處理完成，正在檢查週報…";
   const weekList=Array.isArray(payload.weeks)?payload.weeks:[payload.week];
@@ -300,12 +320,15 @@ function appendRows(id,headers,rows){
  const h=document.createElement("tr");headers.forEach(t=>{const th=document.createElement("th");th.textContent=t;h.append(th)});table.append(h);
  for(const values of rows){const tr=document.createElement("tr");values.forEach(v=>{const td=document.createElement("td");td.textContent=v??"未回報";tr.append(td)});table.append(tr)}root.append(table);
 }
+function renderInsightList(id,lines){const root=$(id);if(!root)return;root.replaceChildren();for(const line of lines){const p=document.createElement("p");p.textContent=line;root.append(p);}}
 async function refreshAdvanced(){
  if(!user)return;
  const [b,l]=await Promise.all([getDocs(collection(db,"users",user.uid,"bodyComposition")),getDocs(collection(db,"users",user.uid,"labs"))]);
  const bodies=b.docs.map(s=>s.data()).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
  appendRows("bodyList",["日期","設備來源","體重","體脂率","骨骼肌","有效性"],bodies.map(d=>[d.date,d.source,d.weightKg==null?"未回報":d.weightKg+" kg",d.bodyFatPct==null?"未回報":d.bodyFatPct+"%",d.skeletalMuscleKg==null?"未回報":d.skeletalMuscleKg+" kg",d.valid===false?"不納入比較":"有效"]));
+ renderInsightList("bodyInsights",bodyInsights(bodies));
  const labs=l.docs.map(s=>s.data()).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+ renderInsightList("labInsights",labInsights(labs));
  $("labLatestDate").textContent=labs.length?"（最近："+labs[0].date+"）":"";
  appendRows("labList",["日期","機構","TG","HDL","LDL","總膽紅素"],labs.map(d=>[d.date,d.facility,d.blood?.triglyceride?.value,d.blood?.hdl?.value,d.blood?.ldl?.value,d.blood?.totalBilirubin?.value]));
 }
@@ -313,7 +336,7 @@ $("bodyForm").onsubmit=async e=>{
  e.preventDefault();if(!user||!allowed(auth.currentUser))return;
  const date=$("bodyDate").value,source=$("bodySource").value;
  if(!date)return;
- const data={date,source,weightKg:readNum("bodyWeight"),bodyFatPct:readNum("bodyFat"),skeletalMuscleKg:readNum("bodyMuscle"),totalBodyWaterKg:readNum("bodyWater"),standardWeightKg:readNum("bodyStandard"),valid:$("bodyValid").value==="true",notes:safeText("bodyNotes"),schemaVersion:3,updatedAt:serverTimestamp()};
+ const data={date,source,deviceModel:safeText("bodyModel"),weightKg:readNum("bodyWeight"),bodyFatPct:readNum("bodyFat"),skeletalMuscleKg:readNum("bodyMuscle"),totalBodyWaterKg:readNum("bodyWater"),standardWeightKg:readNum("bodyStandard"),valid:$("bodyValid").value==="true",notes:safeText("bodyNotes"),schemaVersion:3,updatedAt:serverTimestamp()};
  $("bodyStatus").textContent="正在儲存…";
  try{await addDoc(collection(db,"users",user.uid,"bodyComposition"),data);$("bodyStatus").textContent="體組成紀錄已新增（"+date+"，"+source+"）";$("bodyForm").reset();await refreshAdvanced();}
  catch(err){$("bodyStatus").textContent="儲存失敗："+(err.code||err.message);}
@@ -325,7 +348,7 @@ $("labForm").onsubmit=async e=>{
  const blood={triglyceride:metric("labTg","mg/dL"),hdl:metric("labHdl","mg/dL"),ldl:metric("labLdl","mg/dL"),totalCholesterol:metric("labTc","mg/dL"),glucoseAC:metric("labGlucose","mg/dL"),hba1c:metric("labA1c","%"),egfr:metric("labEgfr","mL/min/1.73m2"),totalBilirubin:metric("labBilirubin","mg/dL")};
  const tg=blood.triglyceride.value,hdl=blood.hdl.value,tc=blood.totalCholesterol.value;
  const derived={tgHdlRatio:tg!=null&&hdl>0?Math.round(tg/hdl*100)/100:null,nonHdlCholesterol:tc!=null&&hdl!=null?Math.round((tc-hdl)*100)/100:null};
- const data={date,facility:safeText("labFacility"),blood,urineNotes:safeText("labUrine"),notes:safeText("labNotes"),derived,schemaVersion:3,updatedAt:serverTimestamp()};
+ const data={date,facility:safeText("labFacility"),reportType:safeText("labReportType"),method:safeText("labMethod"),blood,urineNotes:safeText("labUrine"),notes:safeText("labNotes"),derived,schemaVersion:3,updatedAt:serverTimestamp()};
  $("labStatus").textContent="正在儲存…";
  try{await setDoc(doc(db,"users",user.uid,"labs",date),data,{merge:true});$("labStatus").textContent="檢驗紀錄已儲存（"+date+"）";await refreshAdvanced();}
  catch(err){$("labStatus").textContent="儲存失敗："+(err.code||err.message);}
@@ -353,3 +376,42 @@ async function exportData(kind){
 }
 $("exportJson").onclick=()=>exportData("json");
 $("exportCsv").onclick=()=>exportData("csv");
+
+/* v4 private report migration: owner-only, review-before-write, never overwrites */
+let pendingMedical=null;
+$("medicalReviewBtn").onclick=async()=>{
+ const file=$("medicalImportFile").files[0];pendingMedical=null;$("medicalConfirmBtn").disabled=true;
+ if(!user||!allowed(auth.currentUser)){$("medicalReview").textContent="請先登入授權帳號";return;}
+ if(!file){$("medicalReview").textContent="請選取醫療資料 JSON";return;}
+ try{
+  const p=JSON.parse(await file.text());
+  if(p.format!=="ben-health-os-medical-import-v1"||!Array.isArray(p.bodyComposition)||!Array.isArray(p.labs))throw Error("不支援的醫療匯入格式");
+  if(p.bodyComposition.length+p.labs.length>100)throw Error("單次最多100筆");
+  for(const x of [...p.bodyComposition,...p.labs]){
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(x.date)||typeof x.recordId!=="string"||!/^[a-zA-Z0-9_-]{3,100}$/.test(x.recordId))throw Error("紀錄日期或 ID 不正確");
+   if(!x.facility&&!x.source)throw Error("缺少來源");
+  }
+  const ids=[...p.bodyComposition.map(x=>"body:"+x.recordId),...p.labs.map(x=>"lab:"+x.recordId)];
+  if(new Set(ids).size!==ids.length)throw Error("匯入檔含重複紀錄 ID");
+  pendingMedical=p;
+  $("medicalReview").textContent="已檢查：InBody／體組成 "+p.bodyComposition.length+" 筆；檢驗 "+p.labs.length+" 筆。來源："+(p.description||"未註明")+"。請核對後按確認寫入。";
+  $("medicalConfirmBtn").disabled=false;
+ }catch(e){$("medicalReview").textContent="檢查失敗："+e.message;}
+};
+$("medicalConfirmBtn").onclick=async()=>{
+ if(!pendingMedical||!user||!allowed(auth.currentUser))return;
+ $("medicalConfirmBtn").disabled=true;
+ const status=$("medicalImportStatus");let created=0,skipped=0;
+ try{
+  for(const [name,records] of [["bodyComposition",pendingMedical.bodyComposition],["labs",pendingMedical.labs]]){
+   for(const record of records){
+    const {recordId,...values}=record,ref=doc(db,"users",user.uid,name,recordId);
+    if((await getDoc(ref)).exists()){skipped++;continue;}
+    await setDoc(ref,{...values,sourceType:"verified-user-import",schemaVersion:4,updatedAt:serverTimestamp()});created++;
+    status.textContent="正在寫入私人資料庫：新增 "+created+"，已存在 "+skipped;
+   }
+  }
+  status.textContent="完成：新增 "+created+" 筆；略過既有 "+skipped+" 筆。";
+  pendingMedical=null;await refreshAdvanced();
+ }catch(e){status.textContent="部分匯入可能已完成；新增 "+created+" 筆，失敗："+(e.code||e.message)+"。再次匯入會略過既有 ID。";}
+};
