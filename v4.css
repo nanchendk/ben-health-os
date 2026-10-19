@@ -1,0 +1,26 @@
+/* Ben Health OS v4.0 — white / navy / champagne, responsive.
+   Presentation DNA adapted to web; existing authentication and Firestore code unchanged. */
+:root{color-scheme:light!important;--paper:#fff!important;--ink:#0f2a4f!important;--muted:#5a6577!important;--rule:#e4e8ef!important;--surface:#f4f6fa!important}
+*{box-sizing:border-box}
+body{background:#fff!important;color:#0f2a4f!important;font-family:"Microsoft JhengHei","Noto Sans TC",sans-serif!important;line-height:1.55}
+.app{max-width:1280px!important;padding:clamp(12px,2.5vw,32px)!important}
+.hero{background:#fff!important;color:#0f2a4f!important;border-radius:0!important;border-bottom:1px solid #e4e8ef!important;padding:18px 0 22px!important;display:flex;justify-content:space-between;gap:16px;align-items:center}
+.hero h1{font-size:clamp(1.6rem,3vw,2.3rem);margin:.2rem 0;color:#0f2a4f}
+.eyebrow{font-size:.7rem;color:#ad8842!important;letter-spacing:.16em;font-weight:700}
+.subtitle,.hint{color:#5a6577!important}
+.card{background:#fff!important;color:#0f2a4f!important;border:1px solid #e4e8ef!important;border-radius:16px!important;box-shadow:none!important;padding:clamp(16px,2vw,26px)!important}
+.card h2{font-size:1.22rem;color:#0f2a4f;margin-top:0}
+.card h2::after{content:"";display:block;width:38px;height:3px;background:#c9a961;margin-top:12px}
+button{background:#0f2a4f!important;color:white!important;border-radius:9px!important}
+button:hover{background:#1b3a6f!important}
+input,textarea,select{background:#fff!important;color:#0f2a4f!important;border:1px solid #d9dee6!important;border-radius:8px!important}
+.metric,.quick-box{background:#f4f6fa!important;border:0!important;border-radius:12px!important}
+.metric strong,.big-number{color:#0f2a4f!important;font-variant-numeric:tabular-nums}
+.metric-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important}
+#summaryCards{grid-template-columns:repeat(2,minmax(0,1fr))}
+#trendSection,#metricsSection,#weeklySection{scroll-margin-top:18px}
+#bodyArchive,#labArchive{border-left:3px solid #c9a961!important}
+.week-table th{background:#f4f6fa!important;color:#0f2a4f!important}
+.week-table td{border-color:#e4e8ef!important}
+@media(max-width:700px){.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.hero{align-items:flex-start;flex-direction:column}#summaryCards{grid-template-columns:1fr}}
+@media(max-width:420px){.app{padding:12px!important}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.metric{padding:12px!important}.metric strong{font-size:1.05rem!important}}
