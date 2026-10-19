@@ -5,6 +5,7 @@ import {firebaseConfig,ownerUid} from "./firebase-config.js";
 window.__benModuleLoaded = true;
 const auth=getAuth(initializeApp(firebaseConfig)),db=getFirestore(),$=id=>document.getElementById(id);
 let user=null;
+let loadedDate=null;
 const allowed=u=>u?.uid===ownerUid&&u.providerData.some(p=>p.providerId==="google.com");
 $("loginBtn").onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(e){$("loginStatus").textContent=e.code||"登入失敗"}};
 const fmtWeight=n=>Number(n).toFixed(2)+" kg";
@@ -37,11 +38,41 @@ function renderWeek15(rows){
  $("week15Average").textContent=days.length?fmtWeight(days.reduce((sum,d)=>sum+d.weightKg,0)/days.length):"尚無紀錄";
  $("week15Status").textContent=days.length?"依已回報的 "+days.length+" 天計算；非完整七日週平均。":"恢復正常飲食與輕度運動；等待 Week 15 晨重回報。";
 }
+function renderMetrics(rows){
+ const valid=rows.filter(d=>typeof d.date==="string").sort((a,b)=>b.date.localeCompare(a.date));
+ const end=valid[0]?.date||new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Taipei"});
+ const first=new Date(end+"T12:00:00");first.setDate(first.getDate()-6);
+ const start=first.toISOString().slice(0,10);
+ const recent=valid.filter(d=>d.date>=start&&d.date<=end);
+ $("metricPeriod").textContent="統計期間："+start+" ～ "+end+"（有回報才列入）";
+ for(const [key,id,coverage,unit,digits] of [["sleepHours","sleepAverage","sleepCoverage"," 小時",1],["waterMl","waterAverage","waterCoverage"," ml",0],["proteinG","proteinAverage","proteinCoverage"," g",1],["caloriesKcal","calorieAverage","calorieCoverage"," kcal",0]]){
+  const nums=recent.map(d=>d[key]).filter(n=>typeof n==="number"&&Number.isFinite(n)&&n>=0);
+  $(id).textContent=nums.length?(nums.reduce((a,b)=>a+b,0)/nums.length).toFixed(digits)+unit:"未回報";
+  $(coverage).textContent=nums.length+" / 7 天有紀錄";
+ }
+}
+const formFields=["weight","sleepHours","waterMl","proteinG","caloriesKcal","foodNotes","exerciseNotes","gutNotes","notes"];
+async function loadDate(){
+ const date=$("recordDate").value;
+ if(!user||!/^\d{4}-\d{2}-\d{2}$/.test(date))return;
+ $("saveStatus").textContent="正在讀取 "+date+" 的既有紀錄…";
+ loadedDate=null;$("saveBtn").disabled=true;
+ try{
+  const snapshot=await getDoc(doc(db,"users",user.uid,"daily",date));
+  if($("recordDate").value!==date)return;
+  const d=snapshot.exists()?snapshot.data():{};
+  for(const [input,key] of [["weight","weightKg"],["sleepHours","sleepHours"],["waterMl","waterMl"],["proteinG","proteinG"],["caloriesKcal","caloriesKcal"],["foodNotes","foodNotes"],["exerciseNotes","exerciseNotes"],["gutNotes","gutNotes"],["notes","notes"]])$(input).value=d[key]??"";
+  loadedDate=date;
+  $("saveStatus").textContent=snapshot.exists()?"已載入 "+date+" 的既有紀錄；儲存會更新此日期。":"此日期尚無紀錄，可以新增。";
+ }catch(err){$("saveStatus").textContent="讀取日期失敗："+(err.code||err.message);}
+ finally{if($("recordDate").value===date)$("saveBtn").disabled=loadedDate!==date;}
+}
+$("recordDate").addEventListener("change",loadDate);
 async function refresh(){
  const uid=user.uid;
  const results=await getDocs(query(collection(db,"users",uid,"daily"),orderBy("date","desc"),limit(90)));
  const rows=results.docs.map(s=>s.data());
- renderTrend(rows.slice(0,30));renderWeek15(rows);
+ renderTrend(rows.slice(0,30));renderWeek15(rows);renderMetrics(rows);
  const list=$("recentRecords");list.replaceChildren();
  let found=false;
  results.docs.slice(0,14).forEach(s=>{const d=s.data(),row=document.createElement("div");row.className="record";
@@ -53,21 +84,26 @@ async function refresh(){
  if(week.exists()){const w=week.data();$("weekAverage").textContent=typeof w.averageWeightKg==="number"?w.averageWeightKg+" kg":"未回報";$("weekStatus").textContent=w.status||"未回報";}
 }
 onAuthStateChanged(auth,async u=>{
- user=null;$("dashboardView").hidden=true;$("accountArea").replaceChildren();
+ user=null;loadedDate=null;$("dashboardView").hidden=true;$("accountArea").replaceChildren();
  if(!u){$("loginView").hidden=false;return;}
  if(!allowed(u)){$("loginStatus").textContent="此帳號未授權";await signOut(auth);return;}
  user=u;$("loginView").hidden=true;$("dashboardView").hidden=false;
  const b=document.createElement("button");b.textContent="登出";b.onclick=()=>signOut(auth);$("accountArea").append(b);
- try{await refresh()}catch(e){$("saveStatus").textContent="讀取失敗："+e.code}
+ try{await refresh();if(!$("recordDate").value)$("recordDate").value=new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Taipei"});await loadDate()}catch(e){$("saveStatus").textContent="讀取失敗："+e.code}
 });
 $("dailyForm").onsubmit=async e=>{
  e.preventDefault();if(!user||!allowed(auth.currentUser))return;
- const date=$("recordDate").value;if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return;
+ const date=$("recordDate").value;
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||loadedDate!==date){$("saveStatus").textContent="請先等待當日紀錄載入完成";return;}
  const num=id=>$(id).value.trim()===""?null:Number($(id).value);
  const txt=id=>$(id).value.trim()||null;
+ const data={date,weightKg:num("weight"),sleepHours:num("sleepHours"),waterMl:num("waterMl"),proteinG:num("proteinG"),caloriesKcal:num("caloriesKcal"),foodNotes:txt("foodNotes"),exerciseNotes:txt("exerciseNotes"),gutNotes:txt("gutNotes"),notes:txt("notes"),updatedAt:serverTimestamp()};
  $("saveBtn").disabled=true;
- try{await setDoc(doc(db,"users",user.uid,"daily",date),{date,weightKg:num("weight"),sleepHours:num("sleepHours"),waterMl:num("waterMl"),gutNotes:txt("gutNotes"),notes:txt("notes"),source:"manual",updatedAt:serverTimestamp()});$("saveStatus").textContent="儲存成功";await refresh()}
- catch(err){$("saveStatus").textContent="儲存失敗："+err.code}
+ try{
+  await setDoc(doc(db,"users",user.uid,"daily",date),data,{merge:true});
+  $("saveStatus").textContent="儲存成功："+date;
+  await refresh();
+ }catch(err){$("saveStatus").textContent="儲存失敗："+(err.code||err.message)}
  finally{$("saveBtn").disabled=false}
 };
 $("importBtn").onclick=async()=>{
