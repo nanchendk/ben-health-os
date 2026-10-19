@@ -111,6 +111,9 @@ $("metricWeek").addEventListener("change",()=>renderMetrics(cachedDailyRows));
 function setupLayout(){const root=document.getElementById("dashboardView");for(const id of ["summaryCards","progressSection","qualitySection","metricsSection","trendSection","weeklySection","closeoutSection","recentSection","bodyArchive","labArchive","medicalImportSection","quickSection","dailySection","sleepGutSection","backupArchive"]){const el=document.getElementById(id);if(el)root.append(el);}const quick=document.getElementById("quickSection"),daily=document.getElementById("dailySection"),sleep=document.getElementById("sleepGutSection");if(quick&&daily&&sleep){const details=document.createElement("details"),summary=document.createElement("summary");summary.textContent="補充細節｜睡眠、飲食、腸胃";details.append(summary,daily,sleep);quick.append(details);const date=document.getElementById("recordDate").closest("label");quick.insertBefore(date,quick.querySelector(".quick-grid"));const weight=document.getElementById("weight").closest("label");quick.insertBefore(weight,quick.querySelector(".quick-grid"));const button=document.createElement("button");button.type="button";button.textContent="儲存今日紀錄";button.onclick=()=>document.getElementById("dailyForm").requestSubmit();quick.append(button);}const backup=document.getElementById("backupArchive"),imp=document.getElementById("importSection");if(backup&&imp)backup.append(imp);}
 function elapsed(start,end){const today=taipeiDate();if(today<start)return 0;return Math.round((new Date((today<end?today:end)+"T12:00:00Z")-new Date(start+"T12:00:00Z"))/86400000)+1;}
 setupLayout();
+// Medical records are primary dashboard content, not hidden archives.
+for(const id of ["bodyArchive","labArchive"]){const panel=document.getElementById(id);if(panel){panel.open=true;panel.classList.remove("card--archive");}}
+
 const foodPresets={soy:{label:"無糖高纖豆漿 400 ml",protein:14,kcal:120},eggs:{label:"雞蛋 2 顆",protein:13,kcal:150},whey:{label:"乳清 1 份",protein:25,kcal:120},tofu:{label:"豆乾 1 份",protein:10,kcal:110}};
 let waterHistory=[],foodHistory=[],quickFood=[];
 const qualityExcluded=new Set(["illness","dehydration","glycogen-refill","outlier"]);
@@ -342,11 +345,13 @@ async function refreshAdvanced(){
  appendRows("bodyList",["日期","設備來源","型號","體重","體脂率","骨骼肌","體脂肪量","內臟脂肪","基礎代謝","備註"],bodies.map(d=>[d.date,d.source,d.deviceModel,d.weightKg==null?"未回報":d.weightKg+" kg",d.bodyFatPct==null?"未回報":d.bodyFatPct+"%",d.skeletalMuscleKg==null?"未回報":d.skeletalMuscleKg+" kg",d.bodyFatMassKg??d.fatMassKg,d.visceralFatLevel??d.visceralFat,d.bmrKcal??d.bmr,d.notes]));
  renderInsightList("bodyInsights",bodyInsights(bodies));
  const labs=l.docs.map(s=>s.data()).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+ const medicalSection=$("medicalImportSection");if(medicalSection){const msg=medicalSection.querySelector(".medical-data-status")||document.createElement("p");msg.className="medical-data-status hint";msg.textContent=labs.length?"已讀取私人檢驗報告 "+labs.length+" 筆；若缺少診所報告，請使用下方私人醫療匯入。":"私人資料庫尚無檢驗報告。已整理的診所檔案需要另行確認匯入；歷史體重匯入不包含醫療檢驗。";medicalSection.prepend(msg);}
+
  renderInsightList("labInsights",labInsights(labs));
  $("labLatestDate").textContent=labs.length?"（最近："+labs[0].date+"）":"";
  const metrics=[["總膽固醇","totalCholesterol"],["三酸甘油脂","triglyceride"],["HDL","hdl"],["LDL","ldl"],["空腹血糖","glucoseAC"],["HbA1c","hba1c"],["肌酸酐","creatinine"],["eGFR","egfr"],["總膽紅素","totalBilirubin"],["ALT","alt"],["AST","ast"],["尿蛋白肌酸酐比","urineProteinCreatinineRatio"]];
  const fmt=v=>{if(v==null)return "未回報";if(typeof v==="object")return v.value==null?"未回報":String(v.value)+(v.unit?" "+v.unit:"");return String(v);};
- const metricValue=(d,key)=>d.blood?.[key]??d.urine?.[key]??d[key];
+ const metricValue=(d,key)=>{const aliases={glucoseAC:["glucoseAC","glucose"],totalBilirubin:["totalBilirubin","bilirubin"],urineProteinCreatinineRatio:["urineProteinCreatinineRatio","pcr","upcr"]};for(const k of aliases[key]||[key]){const value=d.blood?.[k]??d.urine?.[k]??d[k];if(value!=null)return value;}return null;};
  appendRows("labList",["日期","機構","報告類型",...metrics.map(m=>m[0]),"尿液備註","其他備註"],labs.map(d=>[d.date,d.facility,d.reportType,...metrics.map(m=>fmt(metricValue(d,m[1]))),d.urineNotes,d.notes]));
 }
 $("bodyForm").onsubmit=async e=>{
