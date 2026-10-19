@@ -108,7 +108,7 @@ function renderMetrics(rows){
  renderWeekDailyDetails(recent,start,end);
 }
 $("metricWeek").addEventListener("change",()=>renderMetrics(cachedDailyRows));
-function setupLayout(){const root=document.getElementById("dashboardView");for(const id of ["quickSection","dailySection","sleepGutSection","progressSection","qualitySection","summaryCards","metricsSection","trendSection","weeklySection","recentSection","bodyArchive","labArchive","backupArchive"]){const el=document.getElementById(id);if(el)root.append(el);}const quick=document.getElementById("quickSection"),daily=document.getElementById("dailySection"),sleep=document.getElementById("sleepGutSection");if(quick&&daily&&sleep){const details=document.createElement("details"),summary=document.createElement("summary");summary.textContent="補充細節｜睡眠、飲食、腸胃";details.append(summary,daily,sleep);quick.append(details);const date=document.getElementById("recordDate").closest("label");quick.insertBefore(date,quick.querySelector(".quick-grid"));const weight=document.getElementById("weight").closest("label");quick.insertBefore(weight,quick.querySelector(".quick-grid"));const button=document.createElement("button");button.type="button";button.textContent="儲存今日紀錄";button.onclick=()=>document.getElementById("dailyForm").requestSubmit();quick.append(button);}const backup=document.getElementById("backupArchive"),imp=document.getElementById("importSection");if(backup&&imp)backup.append(imp);}
+function setupLayout(){const root=document.getElementById("dashboardView");for(const id of ["quickSection","dailySection","sleepGutSection","progressSection","qualitySection","summaryCards","closeoutSection","metricsSection","trendSection","weeklySection","recentSection","bodyArchive","labArchive","backupArchive"]){const el=document.getElementById(id);if(el)root.append(el);}const quick=document.getElementById("quickSection"),daily=document.getElementById("dailySection"),sleep=document.getElementById("sleepGutSection");if(quick&&daily&&sleep){const details=document.createElement("details"),summary=document.createElement("summary");summary.textContent="補充細節｜睡眠、飲食、腸胃";details.append(summary,daily,sleep);quick.append(details);const date=document.getElementById("recordDate").closest("label");quick.insertBefore(date,quick.querySelector(".quick-grid"));const weight=document.getElementById("weight").closest("label");quick.insertBefore(weight,quick.querySelector(".quick-grid"));const button=document.createElement("button");button.type="button";button.textContent="儲存今日紀錄";button.onclick=()=>document.getElementById("dailyForm").requestSubmit();quick.append(button);}const backup=document.getElementById("backupArchive"),imp=document.getElementById("importSection");if(backup&&imp)backup.append(imp);}
 function elapsed(start,end){const today=taipeiDate();if(today<start)return 0;return Math.round((new Date((today<end?today:end)+"T12:00:00Z")-new Date(start+"T12:00:00Z"))/86400000)+1;}
 setupLayout();
 const foodPresets={soy:{label:"無糖高纖豆漿 400 ml",protein:14,kcal:120},eggs:{label:"雞蛋 2 顆",protein:13,kcal:150},whey:{label:"乳清 1 份",protein:25,kcal:120},tofu:{label:"豆乾 1 份",protein:10,kcal:110}};
@@ -199,11 +199,25 @@ function renderWeeklyOverview(weeks,rows){
  }
  root.append(table);
 }
+
+function renderCloseoutState(rows){
+ const status=$("closeoutStatus"),target=$("closeoutRecent");if(!status||!target)return;
+ const finalized=rows.filter(x=>x.closeoutStatus==="final"||x.status==="final"||x.finalized===true);
+ const latest=finalized.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0];
+ const legacy=rows.filter(x=>!["final","draft"].includes(x.closeoutStatus)&&x.status!=="final"&&x.finalized!==true).length;
+ status.textContent=latest?"最近正式同步："+latest.date+"｜已辨識正式結案 "+finalized.length+" 天；未標註狀態 "+legacy+" 天":"尚未辨識到具有正式結案標記的同步紀錄；舊版紀錄不會自動視為已結案。";
+ target.replaceChildren();
+ const p=document.createElement("p");p.className="hint";
+ p.textContent="同步規則：ChatGPT 回報 → 每日正式結案 → 私人 Firestore → 網站顯示。未結案不納入正式週比較；尚未接通 ChatGPT 自動寫入，現階段不會假裝即時同步。";
+ target.append(p);
+}
+
 async function refresh(){
  const uid=user.uid;
  const results=await getDocs(query(collection(db,"users",uid,"daily"),orderBy("date","desc"),limit(200)));
  const rows=results.docs.map(s=>s.data());
  cachedDailyRows=rows;
+ renderCloseoutState(rows);
  renderTrend(rows.slice(0,30));renderWeek15(rows);renderV3Summary(rows);
  const list=$("recentRecords");list.replaceChildren();
  let found=false;
