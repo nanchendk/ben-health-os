@@ -40,7 +40,7 @@ function renderWeek15(rows){
 }
 function renderMetrics(rows){
  const valid=rows.filter(d=>typeof d.date==="string").sort((a,b)=>b.date.localeCompare(a.date));
- const end=valid[0]?.date||new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Taipei"});
+ const end=new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Taipei"});
  const first=new Date(end+"T12:00:00");first.setDate(first.getDate()-6);
  const start=first.toISOString().slice(0,10);
  const recent=valid.filter(d=>d.date>=start&&d.date<=end);
@@ -68,9 +68,25 @@ async function loadDate(){
  finally{if($("recordDate").value===date)$("saveBtn").disabled=loadedDate!==date;}
 }
 $("recordDate").addEventListener("change",loadDate);
+function renderWeeklyOverview(weeks,rows){
+ const root=$("weeklyOverview");root.replaceChildren();
+ const sorted=weeks.sort((a,b)=>String(a.startDate||a.id).localeCompare(String(b.startDate||b.id)));
+ if(!sorted.length){root.textContent="尚無歷史週報";return;}
+ const table=document.createElement("table");table.className="week-table";
+ const head=document.createElement("tr");
+ for(const name of ["週別","期間","平均體重","紀錄狀態"]){const th=document.createElement("th");th.textContent=name;head.append(th);}
+ table.append(head);
+ for(const w of sorted){
+  const tr=document.createElement("tr");
+  const vals=[w.id||"未標示",[w.startDate,w.endDate].filter(Boolean).join(" ～ ")||"未回報",typeof w.averageWeightKg==="number"?fmtWeight(w.averageWeightKg):"未回報",w.status||"未回報"];
+  for(const val of vals){const td=document.createElement("td");td.textContent=val;tr.append(td);}
+  table.append(tr);
+ }
+ root.append(table);
+}
 async function refresh(){
  const uid=user.uid;
- const results=await getDocs(query(collection(db,"users",uid,"daily"),orderBy("date","desc"),limit(90)));
+ const results=await getDocs(query(collection(db,"users",uid,"daily"),orderBy("date","desc"),limit(200)));
  const rows=results.docs.map(s=>s.data());
  renderTrend(rows.slice(0,30));renderWeek15(rows);renderMetrics(rows);
  const list=$("recentRecords");list.replaceChildren();
@@ -80,6 +96,8 @@ async function refresh(){
  row.append(label);list.append(row);
  if(!found&&typeof d.weightKg==="number"){$("latestWeight").textContent=d.weightKg+" kg";$("weightDate").textContent=d.date;found=true;}
  });
+ const weekly=await getDocs(collection(db,"users",uid,"weeks"));
+ renderWeeklyOverview(weekly.docs.map(s=>({id:s.id,...s.data()})),rows);
  const week=await getDoc(doc(db,"users",uid,"weeks","2026-W14"));
  if(week.exists()){const w=week.data();$("weekAverage").textContent=typeof w.averageWeightKg==="number"?w.averageWeightKg+" kg":"未回報";$("weekStatus").textContent=w.status||"未回報";}
 }
@@ -115,7 +133,7 @@ $("importBtn").onclick=async()=>{
  try{
   const payload=JSON.parse(await file.text());
   status.textContent="檔案讀取完成，正在驗證資料格式…";
-  if(payload.format!=="ben-health-os-import-v1"||!Array.isArray(payload.daily)||!payload.week)throw Error("檔案格式不符");
+  if(!["ben-health-os-import-v1","ben-health-os-import-v2"].includes(payload.format)||!Array.isArray(payload.daily)||(!payload.week&&!Array.isArray(payload.weeks)))throw Error("檔案格式不符");
   if(payload.daily.length>31)throw Error("單次最多31筆");
   let saved=0,skipped=0;
   status.textContent="格式驗證通過，共 "+payload.daily.length+" 筆每日紀錄，準備匯入…";
@@ -128,14 +146,17 @@ $("importBtn").onclick=async()=>{
    await setDoc(ref,{date,weightKg,sleepHours,waterMl,gutNotes,notes,source:"historical-import",updatedAt:serverTimestamp()});saved++;
   }
   status.textContent="每日紀錄處理完成，正在檢查週報…";
-  if(typeof payload.week.id!=="string"||!payload.week.id)throw Error("週報 ID 缺漏");
-  const weekRef=doc(db,"users",user.uid,"weeks",payload.week.id);
-  if(!(await getDoc(weekRef)).exists()){
-   const {id,...weekData}=payload.week;
-   await setDoc(weekRef,{...weekData,source:"historical-import",updatedAt:serverTimestamp()});
+  const weekList=Array.isArray(payload.weeks)?payload.weeks:[payload.week];
+  let weekSaved=0,weekSkipped=0;
+  for(const w of weekList){
+   if(!w||typeof w.id!=="string"||!/^2026-W\\d{2}$/.test(w.id))throw Error("週報 ID 格式不正確");
+   const weekRef=doc(db,"users",user.uid,"weeks",w.id);
+   if((await getDoc(weekRef)).exists()){weekSkipped++;continue;}
+   const {id,...weekData}=w;
+   await setDoc(weekRef,{...weekData,source:"historical-import",updatedAt:serverTimestamp()});weekSaved++;
   }
   status.textContent="匯入完成：新增 "+saved+" 天，略過既有 "+skipped+" 天。正在更新儀表板…";
-  try{await refresh();status.textContent="匯入完成：新增 "+saved+" 天，略過既有 "+skipped+" 天。";}
+  try{await refresh();status.textContent="匯入完成：新增 "+saved+" 天、略過 "+skipped+" 天；新增 "+weekSaved+" 份週報、略過 "+weekSkipped+" 份。";}
   catch(refreshError){status.textContent="資料已寫入，但儀表板更新失敗："+(refreshError.code||refreshError.message);}
  }catch(e){status.textContent="匯入失敗："+(e.code||e.message);}
  finally{button.disabled=false;}
