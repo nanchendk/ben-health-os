@@ -383,7 +383,7 @@ $("medicalReviewBtn").onclick=async()=>{
   if(p.format!=="ben-health-os-medical-import-v1"||!Array.isArray(p.bodyComposition)||!Array.isArray(p.labs))throw Error("不支援的醫療匯入格式");
   if(p.bodyComposition.length+p.labs.length>100)throw Error("單次最多100筆");
   for(const x of [...p.bodyComposition,...p.labs]){
-   if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(x.date)||typeof x.recordId!=="string"||!/^[a-zA-Z0-9_-]{3,100}$/.test(x.recordId))throw Error("紀錄日期或 ID 不正確");
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(x.date)||typeof x.recordId!=="string"||!/^[a-zA-Z0-9_-]{3,100}$/.test(x.recordId))throw Error("紀錄日期或 ID 不正確");
    if(!x.facility&&!x.source)throw Error("缺少來源");
   }
   const ids=[...p.bodyComposition.map(x=>"body:"+x.recordId),...p.labs.map(x=>"lab:"+x.recordId)];
