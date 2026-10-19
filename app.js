@@ -149,7 +149,7 @@ $("importBtn").onclick=async()=>{
   const weekList=Array.isArray(payload.weeks)?payload.weeks:[payload.week];
   let weekSaved=0,weekSkipped=0;
   for(const w of weekList){
-   if(!w||typeof w.id!=="string"||!/^2026-W\\d{2}$/.test(w.id))throw Error("週報 ID 格式不正確");
+   if(!w||typeof w.id!=="string"||!/^2026-W\d{2}$/.test(w.id))throw Error("週報 ID 格式不正確");
    const weekRef=doc(db,"users",user.uid,"weeks",w.id);
    if((await getDoc(weekRef)).exists()){weekSkipped++;continue;}
    const {id,...weekData}=w;
