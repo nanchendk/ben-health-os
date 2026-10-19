@@ -357,3 +357,42 @@ async function exportData(kind){
 }
 $("exportJson").onclick=()=>exportData("json");
 $("exportCsv").onclick=()=>exportData("csv");
+
+/* v4 private report migration: owner-only, review-before-write, never overwrites */
+let pendingMedical=null;
+$("medicalReviewBtn").onclick=async()=>{
+ const file=$("medicalImportFile").files[0];pendingMedical=null;$("medicalConfirmBtn").disabled=true;
+ if(!user||!allowed(auth.currentUser)){$("medicalReview").textContent="請先登入授權帳號";return;}
+ if(!file){$("medicalReview").textContent="請選取醫療資料 JSON";return;}
+ try{
+  const p=JSON.parse(await file.text());
+  if(p.format!=="ben-health-os-medical-import-v1"||!Array.isArray(p.bodyComposition)||!Array.isArray(p.labs))throw Error("不支援的醫療匯入格式");
+  if(p.bodyComposition.length+p.labs.length>100)throw Error("單次最多100筆");
+  for(const x of [...p.bodyComposition,...p.labs]){
+   if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(x.date)||typeof x.recordId!=="string"||!/^[a-zA-Z0-9_-]{3,100}$/.test(x.recordId))throw Error("紀錄日期或 ID 不正確");
+   if(!x.facility&&!x.source)throw Error("缺少來源");
+  }
+  const ids=[...p.bodyComposition.map(x=>"body:"+x.recordId),...p.labs.map(x=>"lab:"+x.recordId)];
+  if(new Set(ids).size!==ids.length)throw Error("匯入檔含重複紀錄 ID");
+  pendingMedical=p;
+  $("medicalReview").textContent="已檢查：InBody／體組成 "+p.bodyComposition.length+" 筆；檢驗 "+p.labs.length+" 筆。來源："+(p.description||"未註明")+"。請核對後按確認寫入。";
+  $("medicalConfirmBtn").disabled=false;
+ }catch(e){$("medicalReview").textContent="檢查失敗："+e.message;}
+};
+$("medicalConfirmBtn").onclick=async()=>{
+ if(!pendingMedical||!user||!allowed(auth.currentUser))return;
+ $("medicalConfirmBtn").disabled=true;
+ const status=$("medicalImportStatus");let created=0,skipped=0;
+ try{
+  for(const [name,records] of [["bodyComposition",pendingMedical.bodyComposition],["labs",pendingMedical.labs]]){
+   for(const record of records){
+    const {recordId,...values}=record,ref=doc(db,"users",user.uid,name,recordId);
+    if((await getDoc(ref)).exists()){skipped++;continue;}
+    await setDoc(ref,{...values,sourceType:"verified-user-import",schemaVersion:4,updatedAt:serverTimestamp()});created++;
+    status.textContent="正在寫入私人資料庫：新增 "+created+"，已存在 "+skipped;
+   }
+  }
+  status.textContent="完成：新增 "+created+" 筆；略過既有 "+skipped+" 筆。";
+  pendingMedical=null;await refreshAdvanced();
+ }catch(e){status.textContent="部分匯入可能已完成；新增 "+created+" 筆，失敗："+(e.code||e.message)+"。再次匯入會略過既有 ID。";}
+};
