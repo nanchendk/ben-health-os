@@ -34,7 +34,7 @@ function renderTrend(rows){
 }
 function renderWeek15(rows){
  const days=rows.filter(d=>d.date>="2026-10-19"&&d.date<="2026-10-25"&&typeof d.weightKg==="number"&&Number.isFinite(d.weightKg));
- $("week15Count").textContent=days.length+" / 7";
+ $("week15Count").textContent=days.length+" / "+elapsed("2026-10-19","2026-10-25");
  $("week15Average").textContent=days.length?fmtWeight(days.reduce((sum,d)=>sum+d.weightKg,0)/days.length):"尚無紀錄";
  $("week15Status").textContent=days.length?"依已回報的 "+days.length+" 天計算；非完整七日週平均。":"恢復正常飲食與輕度運動；等待 Week 15 晨重回報。";
 }
@@ -82,10 +82,10 @@ function renderV3Summary(rows){
  const protein=week.filter(d=>typeof d.proteinG==="number");
  const resistance=week.filter(d=>d.exercise?.resistance?.done===true||/彈力繩.*(完成|[0-9]+\s*分鐘)/.test(d.exerciseNotes||""));
  const gut=week.filter(d=>(typeof d.gutNotes==="string"&&d.gutNotes.trim())||d.gut?.events?.length||d.gut?.noStoolToday===true);
- $("v3Weight").textContent=weights.length+" / 7 天";
+ $("v3Weight").textContent=weights.length+" / "+elapsed("2026-10-19","2026-10-25")+" 天";
  $("v3Protein").textContent=protein.length?protein.filter(d=>d.proteinG>=120).length+" / "+protein.length+" 天達標":"未回報";
- $("v3Resistance").textContent=resistance.length+" / 7 天";
- $("v3Gut").textContent=gut.length+" / 7 天";
+ $("v3Resistance").textContent=resistance.length+" / 3 次週目標";
+ $("v3Gut").textContent=gut.length+" / "+elapsed("2026-10-19","2026-10-25")+" 天";
 }
 function renderMetrics(rows){
  const mode=$("metricWeek").value,today=taipeiDate();
@@ -106,6 +106,9 @@ function renderMetrics(rows){
  renderWeekDailyDetails(recent,start,end);
 }
 $("metricWeek").addEventListener("change",()=>renderMetrics(cachedDailyRows));
+function setupLayout(){const root=document.getElementById("dashboardView");for(const id of ["quickSection","dailySection","sleepGutSection","progressSection","qualitySection","summaryCards","metricsSection","trendSection","weeklySection","recentSection","bodyArchive","labArchive","backupArchive"]){const el=document.getElementById(id);if(el)root.append(el);}const quick=document.getElementById("quickSection"),daily=document.getElementById("dailySection"),sleep=document.getElementById("sleepGutSection");if(quick&&daily&&sleep){const details=document.createElement("details"),summary=document.createElement("summary");summary.textContent="補充細節｜睡眠、飲食、腸胃";details.append(summary,daily,sleep);quick.append(details);const date=document.getElementById("recordDate").closest("label");quick.insertBefore(date,quick.querySelector(".quick-grid"));const weight=document.getElementById("weight").closest("label");quick.insertBefore(weight,quick.querySelector(".quick-grid"));const button=document.createElement("button");button.type="button";button.textContent="儲存今日紀錄";button.onclick=()=>document.getElementById("dailyForm").requestSubmit();quick.append(button);}const backup=document.getElementById("backupArchive"),imp=document.getElementById("importSection");if(backup&&imp)backup.append(imp);}
+function elapsed(start,end){const today=taipeiDate();if(today<start)return 0;return Math.round((new Date((today<end?today:end)+"T12:00:00Z")-new Date(start+"T12:00:00Z"))/86400000)+1;}
+setupLayout();
 const foodPresets={soy:{label:"無糖高纖豆漿 400 ml",protein:14,kcal:120},eggs:{label:"雞蛋 2 顆",protein:13,kcal:150},whey:{label:"乳清 1 份",protein:25,kcal:120},tofu:{label:"豆乾 1 份",protein:10,kcal:110}};
 let waterHistory=[],foodHistory=[],quickFood=[];
 const qualityExcluded=new Set(["illness","dehydration","glycogen-refill","outlier"]);
