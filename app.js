@@ -342,9 +342,11 @@ async function refreshAdvanced(){
  if(!user)return;
  const [b,l]=await Promise.all([getDocs(collection(db,"users",user.uid,"bodyComposition")),getDocs(collection(db,"users",user.uid,"labs"))]);
  const bodies=b.docs.map(s=>s.data()).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+ $("bodyArchiveStatus").textContent=bodies.length?"已讀取 "+bodies.length+" 筆私人身體組成紀錄":"私人資料庫尚無身體組成紀錄；請使用下方醫療報告匯入功能。";
  appendRows("bodyList",["日期","設備來源","型號","體重","體脂率","骨骼肌","體脂肪量","內臟脂肪","基礎代謝","備註"],bodies.map(d=>[d.date,d.source,d.deviceModel,d.weightKg==null?"未回報":d.weightKg+" kg",d.bodyFatPct==null?"未回報":d.bodyFatPct+"%",d.skeletalMuscleKg==null?"未回報":d.skeletalMuscleKg+" kg",d.bodyFatMassKg??d.fatMassKg,d.visceralFatLevel??d.visceralFat,d.bmrKcal??d.bmr,d.notes]));
  renderInsightList("bodyInsights",bodyInsights(bodies));
  const labs=l.docs.map(s=>s.data()).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+ $("labArchiveStatus").textContent=labs.length?"已讀取 "+labs.length+" 筆私人檢驗報告（其中定安診所 "+labs.filter(d=>String(d.facility||"").includes("定安")).length+" 筆）":"私人資料庫尚無檢驗報告；先前整理的定安診所資料尚需單獨匯入。";
  const medicalSection=$("medicalImportSection");if(medicalSection){const msg=medicalSection.querySelector(".medical-data-status")||document.createElement("p");msg.className="medical-data-status hint";msg.textContent=labs.length?"已讀取私人檢驗報告 "+labs.length+" 筆；若缺少診所報告，請使用下方私人醫療匯入。":"私人資料庫尚無檢驗報告。已整理的診所檔案需要另行確認匯入；歷史體重匯入不包含醫療檢驗。";medicalSection.prepend(msg);}
 
  renderInsightList("labInsights",labInsights(labs));
