@@ -2,7 +2,7 @@
 // Only same report family + facility + method/model + units may be compared.
 // Missing metadata means NO comparison; never infer a match from numeric similarity.
 const num=v=>typeof v==="number"&&Number.isFinite(v)?v:null;
-const fmt=(n,d=2)=>Number(n).toFixed(d).replace(/\\.?0+$/,"");
+const fmt=(n,d=2)=>Number(n).toFixed(d);
 const present=s=>typeof s==="string"&&s.trim().length>0;
 const same=(a,b)=>present(a)&&present(b)&&a.trim().toLowerCase()===b.trim().toLowerCase();
 function comparable(a,b,family){
