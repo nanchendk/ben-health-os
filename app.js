@@ -351,6 +351,20 @@ async function refreshAdvanced(){
 
  renderInsightList("labInsights",labInsights(labs));
  $("labLatestDate").textContent=labs.length?"（最近："+labs[0].date+"）":"";
+ const comparison=$("clinicComparison");
+ if(comparison){
+  comparison.replaceChildren();
+  const clinic=labs.filter(d=>String(d.facility||"").includes("定安")).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  if(!clinic.length){comparison.textContent="目前私人資料庫尚無定安診所檢驗紀錄。請在下方「醫療報告｜診所與 InBody 私人匯入」匯入核對過的檔案。";}
+  else{
+   const title=document.createElement("p");title.textContent="已讀取定安診所 "+clinic.length+" 筆私人報告。";comparison.append(title);
+   const fields=[["總膽固醇","totalCholesterol"],["三酸甘油脂","triglyceride"],["HDL","hdl"],["LDL","ldl"],["空腹血糖","glucoseAC"],["肌酸酐","creatinine"],["eGFR","egfr"],["總膽紅素","totalBilirubin"],["尿蛋白／肌酸酐比","urineProteinCreatinineRatio"]];
+   const table=document.createElement("table");table.className="week-table";
+   const hr=document.createElement("tr");for(const x of ["指標",...clinic.map(d=>d.date)]){const th=document.createElement("th");th.textContent=x;hr.append(th);}table.append(hr);
+   for(const [label,key] of fields){const tr=document.createElement("tr");const th=document.createElement("th");th.textContent=label;tr.append(th);for(const d of clinic){const td=document.createElement("td");const v=d.blood?.[key]??d.urine?.[key]??d[key];td.textContent=v==null?"未回報":typeof v==="object"?(v.value==null?"未回報":String(v.value)+(v.unit?" "+v.unit:"")):String(v);tr.append(td);}table.append(tr);}
+   comparison.append(table);
+  }
+ }
  const metrics=[["總膽固醇","totalCholesterol"],["三酸甘油脂","triglyceride"],["HDL","hdl"],["LDL","ldl"],["空腹血糖","glucoseAC"],["HbA1c","hba1c"],["肌酸酐","creatinine"],["eGFR","egfr"],["總膽紅素","totalBilirubin"],["ALT","alt"],["AST","ast"],["尿蛋白肌酸酐比","urineProteinCreatinineRatio"]];
  const fmt=v=>{if(v==null)return "未回報";if(typeof v==="object")return v.value==null?"未回報":String(v.value)+(v.unit?" "+v.unit:"");return String(v);};
  const metricValue=(d,key)=>{const aliases={glucoseAC:["glucoseAC","glucose"],totalBilirubin:["totalBilirubin","bilirubin"],urineProteinCreatinineRatio:["urineProteinCreatinineRatio","pcr","upcr"]};for(const k of aliases[key]||[key]){const value=d.blood?.[k]??d.urine?.[k]??d[k];if(value!=null)return value;}return null;};
