@@ -1,3 +1,4 @@
+import {bodyInsights,labInsights} from "./health-insights.js";
 import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import {getFirestore,collection,doc,setDoc,getDocs,query,orderBy,limit,getDoc,addDoc,serverTimestamp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
@@ -300,12 +301,15 @@ function appendRows(id,headers,rows){
  const h=document.createElement("tr");headers.forEach(t=>{const th=document.createElement("th");th.textContent=t;h.append(th)});table.append(h);
  for(const values of rows){const tr=document.createElement("tr");values.forEach(v=>{const td=document.createElement("td");td.textContent=v??"未回報";tr.append(td)});table.append(tr)}root.append(table);
 }
+function renderInsightList(id,lines){const root=$(id);if(!root)return;root.replaceChildren();for(const line of lines){const p=document.createElement("p");p.textContent=line;root.append(p);}}
 async function refreshAdvanced(){
  if(!user)return;
  const [b,l]=await Promise.all([getDocs(collection(db,"users",user.uid,"bodyComposition")),getDocs(collection(db,"users",user.uid,"labs"))]);
  const bodies=b.docs.map(s=>s.data()).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
  appendRows("bodyList",["日期","設備來源","體重","體脂率","骨骼肌","有效性"],bodies.map(d=>[d.date,d.source,d.weightKg==null?"未回報":d.weightKg+" kg",d.bodyFatPct==null?"未回報":d.bodyFatPct+"%",d.skeletalMuscleKg==null?"未回報":d.skeletalMuscleKg+" kg",d.valid===false?"不納入比較":"有效"]));
+ renderInsightList("bodyInsights",bodyInsights(bodies));
  const labs=l.docs.map(s=>s.data()).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+ renderInsightList("labInsights",labInsights(labs));
  $("labLatestDate").textContent=labs.length?"（最近："+labs[0].date+"）":"";
  appendRows("labList",["日期","機構","TG","HDL","LDL","總膽紅素"],labs.map(d=>[d.date,d.facility,d.blood?.triglyceride?.value,d.blood?.hdl?.value,d.blood?.ldl?.value,d.blood?.totalBilirubin?.value]));
 }
