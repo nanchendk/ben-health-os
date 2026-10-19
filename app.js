@@ -38,3 +38,29 @@ $("dailyForm").onsubmit=async e=>{
  catch(err){$("saveStatus").textContent="儲存失敗："+err.code}
  finally{$("saveBtn").disabled=false}
 };
+$("importBtn").onclick=async()=>{
+ const status=$("importStatus"),file=$("importFile").files[0],button=$("importBtn");
+ if(!user||!allowed(auth.currentUser)){status.textContent="請先登入授權帳號";return;}
+ if(!file){status.textContent="請先選取 JSON 檔";return;}
+ button.disabled=true;
+ try{
+  const payload=JSON.parse(await file.text());
+  if(payload.format!=="ben-health-os-import-v1"||!Array.isArray(payload.daily)||!payload.week)throw Error("檔案格式不符");
+  if(payload.daily.length>31)throw Error("單次最多31筆");
+  let saved=0,skipped=0;
+  for(const record of payload.daily){
+   if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(record.date))throw Error("日期格式不正確");
+   const ref=doc(db,"users",user.uid,"daily",record.date);
+   if((await getDoc(ref)).exists()){skipped++;continue;}
+   const {date,weightKg=null,sleepHours=null,waterMl=null,gutNotes=null,notes=null}=record;
+   await setDoc(ref,{date,weightKg,sleepHours,waterMl,gutNotes,notes,source:"historical-import",updatedAt:serverTimestamp()});saved++;
+  }
+  const weekRef=doc(db,"users",user.uid,"weeks",payload.week.id);
+  if(!(await getDoc(weekRef)).exists()){
+   const {id,...weekData}=payload.week;
+   await setDoc(weekRef,{...weekData,source:"historical-import",updatedAt:serverTimestamp()});
+  }
+  status.textContent="匯入完成：新增 "+saved+" 天，略過既有 "+skipped+" 天。";await refresh();
+ }catch(e){status.textContent="匯入失敗："+(e.code||e.message);}
+ finally{button.disabled=false;}
+};
