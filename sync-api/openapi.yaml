@@ -1,0 +1,41 @@
+openapi: 3.1.0
+info:
+  title: Ben Health OS Sync
+  version: 1.0.0
+servers:
+  - url: https://asia-east1-ben-health-os.cloudfunctions.net
+paths:
+  /healthSync:
+    post:
+      operationId: saveHealthRecord
+      summary: Merge a daily or weekly health record
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, id, data]
+              properties:
+                kind:
+                  type: string
+                  enum: [daily, weeks]
+                id:
+                  type: string
+                data:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Successfully merged
+        "400":
+          description: Invalid data
+        "401":
+          description: Unauthorized
+components:
+  securitySchemes:
+    apiKeyAuth:
+      type: http
+      scheme: bearer
