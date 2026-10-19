@@ -36,6 +36,24 @@
       <section class="card"><h2>最近紀錄</h2><div id="recentRecords" class="records"><p class="hint">尚無資料</p></div></section>
     </section>
   </main>
-  <script type="module" src="./app.js"></script>
+  <script>
+  window.__benModuleLoaded = false;
+  window.addEventListener("error", function(event) {
+    const status = document.getElementById("loginStatus");
+    if (status && !window.__benModuleLoaded) {
+      status.textContent = "登入程式載入異常，請按 Ctrl+F5 重整。若持續發生，請截圖 F12 → Console 的紅色錯誤訊息。";
+    }
+  });
+  window.addEventListener("unhandledrejection", function(event) {
+    const status = document.getElementById("loginStatus");
+    if (status) status.textContent = "程式執行失敗：" + (event.reason?.code || event.reason?.message || "未知錯誤");
+  });
+  document.getElementById("loginBtn").addEventListener("click", function() {
+    if (!window.__benModuleLoaded) {
+      document.getElementById("loginStatus").textContent = "Firebase 登入模組尚未成功載入。請按 F12 → Console 查看錯誤。";
+    }
+  });
+</script>
+<script type="module" src="./app.js?v=20261019-2"></script>
 </body>
 </html>
