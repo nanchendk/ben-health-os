@@ -38,19 +38,27 @@ function renderWeek15(rows){
  $("week15Average").textContent=days.length?fmtWeight(days.reduce((sum,d)=>sum+d.weightKg,0)/days.length):"尚無紀錄";
  $("week15Status").textContent=days.length?"依已回報的 "+days.length+" 天計算；非完整七日週平均。":"恢復正常飲食與輕度運動；等待 Week 15 晨重回報。";
 }
+let cachedDailyRows=[];
+function taipeiDate(){return new Date().toLocaleDateString("sv-SE",{timeZone:"Asia/Taipei"});}
+function dateShift(date,offset){const d=new Date(date+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+offset);return d.toISOString().slice(0,10);}
 function renderMetrics(rows){
- const valid=rows.filter(d=>typeof d.date==="string").sort((a,b)=>b.date.localeCompare(a.date));
- const end=new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Taipei"});
- const first=new Date(end+"T12:00:00");first.setDate(first.getDate()-6);
- const start=first.toISOString().slice(0,10);
- const recent=valid.filter(d=>d.date>=start&&d.date<=end);
- $("metricPeriod").textContent="統計期間："+start+" ～ "+end+"（有回報才列入）";
+ const mode=$("metricWeek").value,today=taipeiDate();
+ const start=mode==="previous"?"2026-10-12":mode==="current"?"2026-10-19":dateShift(today,-6);
+ const end=mode==="previous"?"2026-10-18":mode==="current"?"2026-10-25":today;
+ const recent=rows.filter(d=>typeof d.date==="string"&&d.date>=start&&d.date<=end);
+ const label=mode==="previous"?"Week 14 正式週":mode==="current"?"Week 15 本週":"最近七個日曆日";
+ $("metricPeriod").textContent="統計期間："+start+" ～ "+end+"｜"+label+"（未回報不補零）";
  for(const [key,id,coverage,unit,digits] of [["sleepHours","sleepAverage","sleepCoverage"," 小時",1],["waterMl","waterAverage","waterCoverage"," ml",0],["proteinG","proteinAverage","proteinCoverage"," g",1],["caloriesKcal","calorieAverage","calorieCoverage"," kcal",0]]){
   const nums=recent.map(d=>d[key]).filter(n=>typeof n==="number"&&Number.isFinite(n)&&n>=0);
   $(id).textContent=nums.length?(nums.reduce((a,b)=>a+b,0)/nums.length).toFixed(digits)+unit:"未回報";
-  $(coverage).textContent=nums.length+" / 7 天有紀錄";
+  $(coverage).textContent=nums.length+" / 7 天有量化紀錄";
  }
+ const food=recent.filter(d=>typeof d.foodNotes==="string"&&d.foodNotes.trim()).length;
+ const exercise=recent.filter(d=>typeof d.exerciseNotes==="string"&&d.exerciseNotes.trim()).length;
+ $("foodCoverage").textContent="飲食文字紀錄："+food+" / 7 天（不等於已計算營養）";
+ $("exerciseCoverage").textContent="運動文字紀錄："+exercise+" / 7 天";
 }
+$("metricWeek").addEventListener("change",()=>renderMetrics(cachedDailyRows));
 const formFields=["weight","sleepHours","waterMl","proteinG","caloriesKcal","foodNotes","exerciseNotes","gutNotes","notes"];
 async function loadDate(){
  const date=$("recordDate").value;
@@ -88,6 +96,7 @@ async function refresh(){
  const uid=user.uid;
  const results=await getDocs(query(collection(db,"users",uid,"daily"),orderBy("date","desc"),limit(200)));
  const rows=results.docs.map(s=>s.data());
+ cachedDailyRows=rows;
  renderTrend(rows.slice(0,30));renderWeek15(rows);renderMetrics(rows);
  const list=$("recentRecords");list.replaceChildren();
  let found=false;
