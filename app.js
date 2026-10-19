@@ -102,7 +102,7 @@ function renderMetrics(rows){
  }
  const food=recent.filter(d=>typeof d.foodNotes==="string"&&d.foodNotes.trim()).length;
  const exercise=recent.filter(d=>typeof d.exerciseNotes==="string"&&d.exerciseNotes.trim()).length;
- $("foodCoverage").textContent="飲食文字紀錄："+food+" / "+elapsed(start,end)+" 已過天"（不等於已計算營養）";
+ $("foodCoverage").textContent="飲食文字紀錄："+food+" / "+elapsed(start,end)+" 已過天（不等於已計算營養）";
  $("exerciseCoverage").textContent="運動文字紀錄："+exercise+" / "+elapsed(start,end)+" 已過天";
  renderWeekDailyDetails(recent,start,end);
 }
