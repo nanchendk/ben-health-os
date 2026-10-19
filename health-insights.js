@@ -1,34 +1,45 @@
-// Ben Health OS v4 — informational comparison only, not a diagnosis.
-// Comparisons require matching units and compatible source/method.
-const number=v=>typeof v==="number"&&Number.isFinite(v)?v:null;
-const safe=(v,d=1)=>Number(v).toFixed(d);
+// Health OS v4: conservative, source-aware comparison rules.
+// Only same report family + facility + method/model + units may be compared.
+// Missing metadata means NO comparison; never infer a match from numeric similarity.
+const num=v=>typeof v==="number"&&Number.isFinite(v)?v:null;
+const fmt=(n,d=2)=>Number(n).toFixed(d).replace(/\\.?0+$/,"");
+const present=s=>typeof s==="string"&&s.trim().length>0;
+const same=(a,b)=>present(a)&&present(b)&&a.trim().toLowerCase()===b.trim().toLowerCase();
+function comparable(a,b,family){
+ if(!a||!b||a.valid===false||b.valid===false)return false;
+ if(family==="body")return same(a.source,b.source)&&same(a.deviceModel,b.deviceModel);
+ if(family==="lab")return same(a.facility,b.facility)&&same(a.reportType,b.reportType)&&same(a.method,b.method);
+ return false;
+}
 export function bodyInsights(rows){
- const valid=rows.filter(x=>x.valid!==false&&x.date).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
- if(!valid.length)return ["尚無有效身體組成量測。新增一筆即可開始解讀；兩筆以上提供變化比較。"];
- const current=valid[0],previous=valid.slice(1).find(x=>x.source===current.source);
- const result=[`最近量測：${current.date}（${current.source||"來源未標示"}）。`];
- for(const [key,label,unit] of [["bodyFatPct","體脂率","個百分點"],["skeletalMuscleKg","骨骼肌量"," kg"],["weightKg","體重"," kg"]]){
-  const a=number(current[key]),b=previous?number(previous[key]):null;
-  if(a===null)continue;
-  result.push(b===null?`${label}：${safe(a)}；目前沒有同來源的可比較前次數值。`:`${label}：${safe(a)}；較 ${previous.date} ${a>b?"增加":a<b?"下降":"持平"} ${safe(Math.abs(a-b))}${unit}。`);
+ const data=rows.filter(x=>x&&x.date&&x.valid!==false).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+ if(!data.length)return ["尚無有效身體組成量測。新增一筆可看數值，兩筆同型號量測才能比較。"];
+ const current=data[0],previous=data.slice(1).find(x=>comparable(current,x,"body"));
+ const result=[`最新量測：${current.date}｜${current.source||"來源待確認"}｜${current.deviceModel||"型號未記錄"}。`];
+ const metrics=[["weightKg","體重","kg",1],["bodyFatPct","體脂率","個百分點",1],["skeletalMuscleKg","骨骼肌量","kg",1],["fatMassKg","體脂肪量","kg",1],["visceralFatLevel","內臟脂肪等級","級",0]];
+ for(const [key,label,unit,digits] of metrics){
+  const value=num(current[key]);if(value===null)continue;
+  const old=previous?num(previous[key]):null;
+  result.push(old===null?`${label}：${fmt(value,digits)} ${unit}；無同型號可比前次值。`:`${label}：${fmt(value,digits)} ${unit}，相較 ${previous.date} ${value===old?"持平":value>old?"增加":"下降"} ${fmt(Math.abs(value-old),digits)} ${unit}。`);
  }
- result.push("體脂計與 InBody 不交叉比較；水分、進食與量測時間可能影響體組成結果。單次波動不等於脂肪或肌肉真正改變。");
+ if(!previous)result.push("未找到同來源、同儀器型號的歷史量測，暫不計算變化；不能將不同品牌／型號的骨骼肌量或體脂率直接相減。");
+ result.push("量測時間、飲食、運動與水分可能影響數值；單次差異不等於實際脂肪或肌肉改變。");
  return result;
 }
-const LABS=[["ldl","LDL-C"],["hdl","HDL-C"],["triglyceride","三酸甘油酯"],["totalCholesterol","總膽固醇"],["glucoseAC","空腹血糖"],["hba1c","HbA1c"],["egfr","eGFR"],["totalBilirubin","總膽紅素"]];
+const METRICS=[["ldl","LDL-C"],["hdl","HDL-C"],["triglyceride","三酸甘油脂"],["totalCholesterol","總膽固醇"],["glucoseAC","空腹血糖"],["hba1c","HbA1c"],["egfr","eGFR"],["totalBilirubin","總膽紅素"]];
 export function labInsights(rows){
- const valid=rows.filter(x=>x.date).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
- if(!valid.length)return ["尚無檢驗報告。上傳一份即可解讀報告數值；第二份起可做歷史比較。"];
- const now=valid[0],out=[`最近報告：${now.date}（${now.facility||"院所未標示"}）。`];
- for(const [key,label] of LABS){
-  const obj=now.blood?.[key],v=number(obj?.value);if(v===null)continue;
-  const older=valid.slice(1).find(x=>number(x.blood?.[key]?.value)!==null&&x.blood[key].unit===obj.unit);
-  let line=`${label}：${safe(v,2)} ${obj.unit||""}`;
-  if(older){const p=older.blood[key].value;line+=`；較 ${older.date} ${v>p?"上升":v<p?"下降":"持平"} ${safe(Math.abs(v-p),2)} ${obj.unit||""}`;}
-  else line+="；尚無同單位的前次數值";
-  out.push(line+"。");
+ const data=rows.filter(x=>x&&x.date).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+ if(!data.length)return ["尚無檢驗報告。新增一份可閱讀數值；同檢驗系列兩份以上才可比較。"];
+ const current=data[0],result=[`最新報告：${current.date}｜${current.facility||"院所待確認"}｜${current.reportType||"類型未記錄"}。`];
+ for(const [key,label] of METRICS){
+  const item=current.blood?.[key],value=num(item?.value);if(value===null)continue;
+  const old=data.slice(1).find(x=>comparable(current,x,"lab")&&same(x.blood?.[key]?.unit,item.unit)&&num(x.blood?.[key]?.value)!==null);
+  const prior=old?num(old.blood[key].value):null;
+  const suffix=prior===null?"沒有相同院所、報告類型、方法及單位的可比較前次值。":`較 ${old.date} ${value===prior?"持平":value>prior?"上升":"下降"} ${fmt(Math.abs(value-prior))} ${item.unit}。`;
+  result.push(`${label}：${fmt(value)} ${item.unit||"單位未記錄"}；${suffix}`);
  }
- out.push("請以原報告參考區間、檢驗方法、採檢條件與個人風險評估結果；數值上升或下降不必然代表改善或惡化。");
- out.push("如報告標示異常，請與醫師確認個人目標、複查時機及是否需要處置；本系統不提供診斷或自行調藥建議。");
- return out;
+ result.push("各次正常／異常以原報告參考範圍與個人風險判讀，數值上升或下降不等於改善或惡化。不同院所、檢驗方法、報告類型或單位不跨組比較。");
+ result.push("異常檢驗與影像發現須分開追蹤；必要時由醫師評估，勿自行停藥或調整處方。");
+ return result;
 }
+export const comparisonPolicy={version:"v4-strict-1",requires:["reportType","facility","method","unit"],bodyRequires:["source","deviceModel"],crossGroupComparison:false,missingIsZero:false};
