@@ -11,7 +11,7 @@ $("loginBtn").onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthPro
 const fmtWeight=n=>Number(n).toFixed(2)+" kg";
 function renderTrend(rows){
  const el=$("weightChart");el.replaceChildren();
- const values=rows.filter(d=>typeof d.weightKg==="number"&&Number.isFinite(d.weightKg)).sort((a,b)=>a.date.localeCompare(b.date));
+ const values=rows.filter(d=>typeof d.weightKg==="number"&&Number.isFinite(d.weightKg)&&d.excludeFromTrend!==true).sort((a,b)=>a.date.localeCompare(b.date));
  if(!values.length){el.textContent="尚無體重資料";return;}
  const w=800,h=260,p={l:55,r:24,t:28,b:48};
  const lo=Math.min(...values.map(d=>d.weightKg)),hi=Math.max(...values.map(d=>d.weightKg));
@@ -70,7 +70,7 @@ function renderWeekDailyDetails(recent,start,end){
   const row=recent.find(r=>r.date===d);
   if(row)count++;
   const tr=document.createElement("tr");
-  const cells=[d,row&&typeof row.weightKg==="number"?fmtWeight(row.weightKg):"未回報",row&&typeof row.sleepHours==="number"?row.sleepHours+" 小時":"未回報",row?.foodNotes||"未記錄文字",([row?.gutNotes,row?.exerciseNotes,row?.notes].filter(Boolean).join("；"))||"未記錄文字"];
+  const cells=[d,row&&typeof row.weightKg==="number"?fmtWeight(row.weightKg):"未回報",row&&typeof row.sleepHours==="number"?row.sleepHours+" 小時":"未回報",row?.foodNotes||"未記錄文字",([row?.dataQuality&&row.dataQuality!=="clean"?"資料品質："+row.dataQuality:null,row?.gutNotes,row?.exerciseNotes,row?.notes].filter(Boolean).join("；"))||"未記錄文字"];
   for(const value of cells){const td=document.createElement("td");td.textContent=value;tr.append(td);}table.append(tr);
  }
  const p=document.createElement("p");p.className="hint";p.textContent="此期間共有 "+count+" / 7 天建立每日紀錄；空白數值不代表零。";
@@ -95,6 +95,38 @@ function renderMetrics(rows){
  renderWeekDailyDetails(recent,start,end);
 }
 $("metricWeek").addEventListener("change",()=>renderMetrics(cachedDailyRows));
+const foodPresets={soy:{label:"無糖高纖豆漿 400 ml",protein:14,kcal:120},eggs:{label:"雞蛋 2 顆",protein:13,kcal:150},whey:{label:"乳清 1 份",protein:25,kcal:120},tofu:{label:"豆乾 1 份",protein:10,kcal:110}};
+let waterHistory=[],foodHistory=[],quickFood=[];
+const qualityExcluded=new Set(["illness","dehydration","glycogen-refill","outlier"]);
+function quickMessage(message){$("quickStatus").textContent=message+"；請按「儲存私人紀錄」才會寫入。";}
+function quickReady(){if(!user||loadedDate!==$("recordDate").value){quickMessage("請先選擇並載入日期");return false;}return true;}
+function updateQuickDisplays(){
+ $("quickWaterValue").textContent=$("waterMl").value.trim()===""?"未回報":Number($("waterMl").value).toLocaleString()+" ml";
+ $("quickFoodValue").textContent=quickFood.length?"已快選："+quickFood.map(id=>foodPresets[id].label).join("、"):"未選擇品項";
+}
+document.querySelectorAll("[data-water-add]").forEach(b=>b.addEventListener("click",()=>{
+ if(!quickReady())return;
+ waterHistory.push($("waterMl").value);$("waterMl").value=Number($("waterMl").value||0)+Number(b.dataset.waterAdd);
+ updateQuickDisplays();quickMessage("飲水已更新");
+}));
+$("quickWaterUndo").onclick=()=>{if(!quickReady()||!waterHistory.length)return;$("waterMl").value=waterHistory.pop();updateQuickDisplays();quickMessage("已撤銷上一筆飲水");};
+document.querySelectorAll("[data-food]").forEach(b=>b.addEventListener("click",()=>{
+ if(!quickReady())return;
+ const preset=foodPresets[b.dataset.food];
+ foodHistory.push({protein:$("proteinG").value,calories:$("caloriesKcal").value,notes:$("foodNotes").value,items:[...quickFood]});
+ $("proteinG").value=Number($("proteinG").value||0)+preset.protein;
+ $("caloriesKcal").value=Number($("caloriesKcal").value||0)+preset.kcal;
+ $("foodNotes").value=[$("foodNotes").value.trim(),preset.label+"（快選估算）"].filter(Boolean).join("；");
+ quickFood.push(b.dataset.food);updateQuickDisplays();quickMessage("已加入 "+preset.label+" 的估算營養");
+}));
+$("quickFoodUndo").onclick=()=>{if(!quickReady()||!foodHistory.length)return;const prev=foodHistory.pop();$("proteinG").value=prev.protein;$("caloriesKcal").value=prev.calories;$("foodNotes").value=prev.notes;quickFood=prev.items;updateQuickDisplays();quickMessage("已撤銷上一筆飲食快選");};
+document.querySelectorAll("[data-exercise]").forEach(b=>b.addEventListener("click",()=>{
+ if(!quickReady())return;const mins=Number(b.dataset.exercise);$("exerciseNotes").value=mins?"彈力繩 "+mins+" 分鐘":"今日未做彈力繩";$("quickExerciseValue").textContent=$("exerciseNotes").value;quickMessage("運動紀錄已更新");
+}));
+const gutLabels={normal:"正常成形",soft:"偏軟",hard:"偏硬／費力",none:"今日無排便"};
+document.querySelectorAll("[data-gut]").forEach(b=>b.addEventListener("click",()=>{
+ if(!quickReady())return;const label=gutLabels[b.dataset.gut];$("gutNotes").value=[$("gutNotes").value.trim(),label].filter(Boolean).join("；");$("quickGutValue").textContent=label;quickMessage("排便紀錄已更新");
+}));
 const formFields=["weight","sleepHours","waterMl","proteinG","caloriesKcal","foodNotes","exerciseNotes","gutNotes","notes"];
 async function loadDate(){
  const date=$("recordDate").value;
@@ -106,6 +138,9 @@ async function loadDate(){
   if($("recordDate").value!==date)return;
   const d=snapshot.exists()?snapshot.data():{};
   for(const [input,key] of [["weight","weightKg"],["sleepHours","sleepHours"],["waterMl","waterMl"],["proteinG","proteinG"],["caloriesKcal","caloriesKcal"],["foodNotes","foodNotes"],["exerciseNotes","exerciseNotes"],["gutNotes","gutNotes"],["notes","notes"]])$(input).value=d[key]??"";
+  $("dataQuality").value=d.dataQuality||"clean";
+  waterHistory=[];foodHistory=[];quickFood=[];updateQuickDisplays();
+  $("quickExerciseValue").textContent=d.exerciseNotes||"未回報";$("quickGutValue").textContent=d.gutNotes||"未回報";
   loadedDate=date;
   $("saveStatus").textContent=snapshot.exists()?"已載入 "+date+" 的既有紀錄；儲存會更新此日期。":"此日期尚無紀錄，可以新增。";
  }catch(err){$("saveStatus").textContent="讀取日期失敗："+(err.code||err.message);}
@@ -162,7 +197,7 @@ $("dailyForm").onsubmit=async e=>{
  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||loadedDate!==date){$("saveStatus").textContent="請先等待當日紀錄載入完成";return;}
  const num=id=>$(id).value.trim()===""?null:Number($(id).value);
  const txt=id=>$(id).value.trim()||null;
- const data={date,weightKg:num("weight"),sleepHours:num("sleepHours"),waterMl:num("waterMl"),proteinG:num("proteinG"),caloriesKcal:num("caloriesKcal"),foodNotes:txt("foodNotes"),exerciseNotes:txt("exerciseNotes"),gutNotes:txt("gutNotes"),notes:txt("notes"),updatedAt:serverTimestamp()};
+ const data={date,weightKg:num("weight"),sleepHours:num("sleepHours"),waterMl:num("waterMl"),proteinG:num("proteinG"),caloriesKcal:num("caloriesKcal"),foodNotes:txt("foodNotes"),exerciseNotes:txt("exerciseNotes"),gutNotes:txt("gutNotes"),notes:txt("notes"),dataQuality:$("dataQuality").value,excludeFromTrend:qualityExcluded.has($("dataQuality").value),schemaVersion:3,updatedAt:serverTimestamp()};
  $("saveBtn").disabled=true;
  try{
   await setDoc(doc(db,"users",user.uid,"daily",date),data,{merge:true});
