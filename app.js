@@ -185,21 +185,35 @@ async function loadDate(){
 $("recordDate").addEventListener("change",loadDate);
 function renderWeeklyOverview(weeks,rows){
  const root=$("weeklyOverview");root.replaceChildren();
- const sorted=weeks.sort((a,b)=>String(a.startDate||a.id).localeCompare(String(b.startDate||b.id)));
+ const sorted=[...weeks].sort((a,b)=>String(a.startDate||a.id).localeCompare(String(b.startDate||b.id)));
  if(!sorted.length){root.textContent="尚無歷史週報";return;}
  const table=document.createElement("table");table.className="week-table";
  const head=document.createElement("tr");
- for(const name of ["週別","期間","平均體重","紀錄狀態"]){const th=document.createElement("th");th.textContent=name;head.append(th);}
+ for(const name of ["週別","期間","平均體重","紀錄狀態","詳細資料"]){const th=document.createElement("th");th.textContent=name;head.append(th);}
  table.append(head);
  for(const w of sorted){
+  const dates=rows.filter(d=>d.date&&w.startDate&&w.endDate&&d.date>=w.startDate&&d.date<=w.endDate).sort((a,b)=>a.date.localeCompare(b.date));
+  const valid=dates.filter(d=>typeof d.weightKg==="number"&&Number.isFinite(d.weightKg));
+  const computed=valid.length?valid.reduce((a,d)=>a+d.weightKg,0)/valid.length:null;
+  const avg=typeof w.averageWeightKg==="number"?w.averageWeightKg:computed;
   const tr=document.createElement("tr");
-  const vals=[w.id||"未標示",[w.startDate,w.endDate].filter(Boolean).join(" ～ ")||"未回報",typeof w.averageWeightKg==="number"?fmtWeight(w.averageWeightKg):"未回報",w.status||"未回報"];
+  const status=w.status||"未回報";
+  const vals=[w.id||"未標示",[w.startDate,w.endDate].filter(Boolean).join(" ～ ")||"未回報",avg==null?"未回報":fmtWeight(avg)+(typeof w.averageWeightKg==="number"?"":"（由現有每日紀錄計算）"),status];
   for(const val of vals){const td=document.createElement("td");td.textContent=val;tr.append(td);}
-  table.append(tr);
+  const detailCell=document.createElement("td"),details=document.createElement("details"),summary=document.createElement("summary");
+  summary.textContent="展開週報";details.append(summary);
+  const note=document.createElement("p");note.className="hint";
+  note.textContent="體重 "+valid.length+"/7 日；睡眠 "+dates.filter(d=>typeof d.sleepHours==="number").length+"/7 日。缺漏欄位不補值。";
+  details.append(note);
+  if(w.id==="2026-W12"){const warning=document.createElement("p");warning.textContent="疾病／脫水干擾：10/03、10/04 的體重不可視為減脂成果；疾病前 09/29～10/02 代表平均約 89.25 kg。";details.append(warning);}
+  if(dates.length){const daily=document.createElement("table");daily.className="week-table";
+   const dh=document.createElement("tr");for(const h of ["日期","體重","睡眠","腸胃","飲食／備註"]){const th=document.createElement("th");th.textContent=h;dh.append(th);}daily.append(dh);
+   for(const d of dates){const dr=document.createElement("tr");for(const value of [d.date,d.weightKg==null?"未回報":fmtWeight(d.weightKg),d.sleepHours==null?"未回報":d.sleepHours+" 小時",d.gutNotes||"未回報",d.foodNotes||d.notes||"未回報"]){const td=document.createElement("td");td.textContent=value;dr.append(td);}daily.append(dr);}details.append(daily);
+  }else{const p=document.createElement("p");p.textContent="本週每日明細尚未匯入。";details.append(p);}
+  detailCell.append(details);tr.append(detailCell);table.append(tr);
  }
  root.append(table);
 }
-
 function renderCloseoutState(rows){
  const status=$("closeoutStatus"),target=$("closeoutRecent");if(!status||!target)return;
  const finalized=rows.filter(x=>x.closeoutStatus==="final"||x.status==="final"||x.finalized===true);
@@ -325,12 +339,15 @@ async function refreshAdvanced(){
  if(!user)return;
  const [b,l]=await Promise.all([getDocs(collection(db,"users",user.uid,"bodyComposition")),getDocs(collection(db,"users",user.uid,"labs"))]);
  const bodies=b.docs.map(s=>s.data()).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
- appendRows("bodyList",["日期","設備來源","體重","體脂率","骨骼肌","有效性"],bodies.map(d=>[d.date,d.source,d.weightKg==null?"未回報":d.weightKg+" kg",d.bodyFatPct==null?"未回報":d.bodyFatPct+"%",d.skeletalMuscleKg==null?"未回報":d.skeletalMuscleKg+" kg",d.valid===false?"不納入比較":"有效"]));
+ appendRows("bodyList",["日期","設備來源","型號","體重","體脂率","骨骼肌","體脂肪量","內臟脂肪","基礎代謝","備註"],bodies.map(d=>[d.date,d.source,d.deviceModel,d.weightKg==null?"未回報":d.weightKg+" kg",d.bodyFatPct==null?"未回報":d.bodyFatPct+"%",d.skeletalMuscleKg==null?"未回報":d.skeletalMuscleKg+" kg",d.bodyFatMassKg??d.fatMassKg,d.visceralFatLevel??d.visceralFat,d.bmrKcal??d.bmr,d.notes]));
  renderInsightList("bodyInsights",bodyInsights(bodies));
  const labs=l.docs.map(s=>s.data()).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
  renderInsightList("labInsights",labInsights(labs));
  $("labLatestDate").textContent=labs.length?"（最近："+labs[0].date+"）":"";
- appendRows("labList",["日期","機構","TG","HDL","LDL","總膽紅素"],labs.map(d=>[d.date,d.facility,d.blood?.triglyceride?.value,d.blood?.hdl?.value,d.blood?.ldl?.value,d.blood?.totalBilirubin?.value]));
+ const metrics=[["總膽固醇","totalCholesterol"],["三酸甘油脂","triglyceride"],["HDL","hdl"],["LDL","ldl"],["空腹血糖","glucoseAC"],["HbA1c","hba1c"],["肌酸酐","creatinine"],["eGFR","egfr"],["總膽紅素","totalBilirubin"],["ALT","alt"],["AST","ast"],["尿蛋白肌酸酐比","urineProteinCreatinineRatio"]];
+ const fmt=v=>{if(v==null)return "未回報";if(typeof v==="object")return v.value==null?"未回報":String(v.value)+(v.unit?" "+v.unit:"");return String(v);};
+ const metricValue=(d,key)=>d.blood?.[key]??d.urine?.[key]??d[key];
+ appendRows("labList",["日期","機構","報告類型",...metrics.map(m=>m[0]),"尿液備註","其他備註"],labs.map(d=>[d.date,d.facility,d.reportType,...metrics.map(m=>fmt(metricValue(d,m[1]))),d.urineNotes,d.notes]));
 }
 $("bodyForm").onsubmit=async e=>{
  e.preventDefault();if(!user||!allowed(auth.currentUser))return;
