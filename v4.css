@@ -50,3 +50,11 @@ input,textarea,select{background:#fff!important;color:#0f2a4f!important;border:1
 #quickSection{margin-top:28px;border:1px solid #dbe2eb;background:#f8fafc!important}
 #quickSection::before{content:"補充操作｜手動輸入（非每日主要流程）";display:block;color:#66758c;font-size:.78rem;letter-spacing:.04em;margin-bottom:10px}
 #bodyArchive,#labArchive{scroll-margin-top:20px}
+
+/* Medical archives are read-first; optional data entry is secondary. */
+.medical-visible .manual-entry{margin-top:22px;border-top:1px solid #d9e0e9;padding-top:14px}
+.medical-visible .manual-entry>summary{cursor:pointer;font-weight:600;color:#51647d;padding:10px 0}
+.medical-visible .weekly-overview{max-width:100%;overflow-x:auto;margin-top:14px}
+#clinicComparison{overflow-x:auto}
+#clinicComparison .week-table{min-width:580px}
+#bodyArchiveStatus,#labArchiveStatus{margin:10px 0 14px}
