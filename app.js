@@ -1,6 +1,6 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-import {getFirestore,collection,doc,setDoc,getDocs,query,orderBy,limit,getDoc,serverTimestamp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+import {getFirestore,collection,doc,setDoc,getDocs,query,orderBy,limit,getDoc,addDoc,serverTimestamp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 import {firebaseConfig,ownerUid} from "./firebase-config.js";
 window.__benModuleLoaded = true;
 const auth=getAuth(initializeApp(firebaseConfig)),db=getFirestore(),$=id=>document.getElementById(id);
@@ -138,6 +138,25 @@ const gutLabels={normal:"正常成形",soft:"偏軟",hard:"偏硬／費力",none
 document.querySelectorAll("[data-gut]").forEach(b=>b.addEventListener("click",()=>{
  if(!quickReady())return;const label=gutLabels[b.dataset.gut];$("gutNotes").value=[$("gutNotes").value.trim(),label].filter(Boolean).join("；");$("quickGutValue").textContent=label;quickMessage("排便紀錄已更新");
 }));
+const advancedIds=["sleepStart","sleepEnd","nocturia","morningEnergy","bristol","stoolTime","gutStraining","gutPain","gutBlood","gutNoStool"];
+function loadAdvanced(d){
+ const pairs={sleepStart:d.sleepSegments?.[0]?.start||d.bedtime||"",sleepEnd:d.sleepSegments?.[0]?.end||"",nocturia:d.nocturia??"",morningEnergy:d.morningEnergy??"",bristol:d.gut?.events?.[0]?.bristol??"",stoolTime:d.gut?.events?.[0]?.time||""};
+ for(const [id,value] of Object.entries(pairs))$(id).value=value;
+ for(const [id,key] of [["gutStraining","straining"],["gutPain","pain"],["gutBlood","blood"]])$(id).checked=d.gut?.events?.[0]?.[key]===true;
+ $("gutNoStool").checked=d.gut?.noStoolToday===true;
+}
+function advancedData(){
+ const n=id=>$(id).value===""?null:Number($(id).value);
+ const sleepStart=$("sleepStart").value,sleepEnd=$("sleepEnd").value;
+ const sleepSegments=sleepStart&&sleepEnd?[{start:sleepStart,end:sleepEnd}]:null;
+ const gutEvent=$("bristol").value?{time:$("stoolTime").value||null,bristol:n("bristol"),straining:$("gutStraining").checked,pain:$("gutPain").checked,blood:$("gutBlood").checked}:null;
+ return {sleepSegments,bedtime:sleepStart||null,nocturia:n("nocturia"),morningEnergy:n("morningEnergy"),gut:{events:gutEvent?[gutEvent]:[],noStoolToday:$("gutNoStool").checked}};
+}
+function sleepFromSegment(start,end){
+ const a=start.split(":").map(Number),b=end.split(":").map(Number);
+ let diff=(b[0]*60+b[1])-(a[0]*60+a[1]);if(diff<0)diff+=1440;
+ return Math.round(diff/6)/10;
+}
 const formFields=["weight","sleepHours","waterMl","proteinG","caloriesKcal","foodNotes","exerciseNotes","gutNotes","notes"];
 async function loadDate(){
  const date=$("recordDate").value;
@@ -150,6 +169,7 @@ async function loadDate(){
   const d=snapshot.exists()?snapshot.data():{};
   for(const [input,key] of [["weight","weightKg"],["sleepHours","sleepHours"],["waterMl","waterMl"],["proteinG","proteinG"],["caloriesKcal","caloriesKcal"],["foodNotes","foodNotes"],["exerciseNotes","exerciseNotes"],["gutNotes","gutNotes"],["notes","notes"]])$(input).value=d[key]??"";
   $("dataQuality").value=d.dataQuality||"clean";
+  loadAdvanced(d);
   waterHistory=[];foodHistory=[];quickFood=[];updateQuickDisplays();
   $("quickExerciseValue").textContent=d.exerciseNotes||"未回報";$("quickGutValue").textContent=d.gutNotes||"未回報";
   loadedDate=date;
@@ -191,6 +211,7 @@ async function refresh(){
  cachedWeeks=weekly.docs.map(s=>({id:s.id,...s.data()}));
  renderWeeklyOverview(cachedWeeks,rows);
  populateWeekOptions(rows,cachedWeeks);renderMetrics(rows);
+ await refreshAdvanced();
  const week=await getDoc(doc(db,"users",uid,"weeks","2026-W14"));
  if(week.exists()){const w=week.data();$("weekAverage").textContent=typeof w.averageWeightKg==="number"?w.averageWeightKg+" kg":"未回報";$("weekStatus").textContent=w.status||"未回報";}
 }
@@ -208,7 +229,9 @@ $("dailyForm").onsubmit=async e=>{
  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||loadedDate!==date){$("saveStatus").textContent="請先等待當日紀錄載入完成";return;}
  const num=id=>$(id).value.trim()===""?null:Number($(id).value);
  const txt=id=>$(id).value.trim()||null;
- const data={date,weightKg:num("weight"),sleepHours:num("sleepHours"),waterMl:num("waterMl"),proteinG:num("proteinG"),caloriesKcal:num("caloriesKcal"),foodNotes:txt("foodNotes"),exerciseNotes:txt("exerciseNotes"),gutNotes:txt("gutNotes"),notes:txt("notes"),dataQuality:$("dataQuality").value,excludeFromTrend:qualityExcluded.has($("dataQuality").value),schemaVersion:3,updatedAt:serverTimestamp()};
+ const extra=advancedData();
+ const sleepHours=extra.sleepSegments?sleepFromSegment(extra.sleepSegments[0].start,extra.sleepSegments[0].end):num("sleepHours");
+ const data={date,...extra,weightKg:num("weight"),sleepHours,waterMl:num("waterMl"),proteinG:num("proteinG"),caloriesKcal:num("caloriesKcal"),foodNotes:txt("foodNotes"),exerciseNotes:txt("exerciseNotes"),gutNotes:txt("gutNotes"),notes:txt("notes"),dataQuality:$("dataQuality").value,excludeFromTrend:qualityExcluded.has($("dataQuality").value),schemaVersion:3,updatedAt:serverTimestamp()};
  $("saveBtn").disabled=true;
  try{
   await setDoc(doc(db,"users",user.uid,"daily",date),data,{merge:true});
@@ -263,3 +286,65 @@ $("importBtn").onclick=async()=>{
  }catch(e){status.textContent="匯入失敗："+(e.code||e.message);}
  finally{button.disabled=false;}
 };
+
+const readNum=id=>$(id).value.trim()===""?null:Number($(id).value);
+const safeText=id=>$(id).value.trim()||null;
+function appendRows(id,headers,rows){
+ const root=$(id);root.replaceChildren();
+ if(!rows.length){root.textContent="尚無紀錄";return;}
+ const table=document.createElement("table");table.className="week-table";
+ const h=document.createElement("tr");headers.forEach(t=>{const th=document.createElement("th");th.textContent=t;h.append(th)});table.append(h);
+ for(const values of rows){const tr=document.createElement("tr");values.forEach(v=>{const td=document.createElement("td");td.textContent=v??"未回報";tr.append(td)});table.append(tr)}root.append(table);
+}
+async function refreshAdvanced(){
+ if(!user)return;
+ const [b,l]=await Promise.all([getDocs(collection(db,"users",user.uid,"bodyComposition")),getDocs(collection(db,"users",user.uid,"labs"))]);
+ const bodies=b.docs.map(s=>s.data()).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+ appendRows("bodyList",["日期","設備來源","體重","體脂率","骨骼肌","有效性"],bodies.map(d=>[d.date,d.source,d.weightKg==null?"未回報":d.weightKg+" kg",d.bodyFatPct==null?"未回報":d.bodyFatPct+"%",d.skeletalMuscleKg==null?"未回報":d.skeletalMuscleKg+" kg",d.valid===false?"不納入比較":"有效"]));
+ const labs=l.docs.map(s=>s.data()).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+ appendRows("labList",["日期","機構","TG","HDL","LDL","總膽紅素"],labs.map(d=>[d.date,d.facility,d.blood?.triglyceride?.value,d.blood?.hdl?.value,d.blood?.ldl?.value,d.blood?.totalBilirubin?.value]));
+}
+$("bodyForm").onsubmit=async e=>{
+ e.preventDefault();if(!user||!allowed(auth.currentUser))return;
+ const date=$("bodyDate").value,source=$("bodySource").value;
+ if(!date)return;
+ const data={date,source,weightKg:readNum("bodyWeight"),bodyFatPct:readNum("bodyFat"),skeletalMuscleKg:readNum("bodyMuscle"),totalBodyWaterKg:readNum("bodyWater"),standardWeightKg:readNum("bodyStandard"),valid:$("bodyValid").value==="true",notes:safeText("bodyNotes"),schemaVersion:3,updatedAt:serverTimestamp()};
+ $("bodyStatus").textContent="正在儲存…";
+ try{await addDoc(collection(db,"users",user.uid,"bodyComposition"),data);$("bodyStatus").textContent="體組成紀錄已新增（"+date+"，"+source+"）";$("bodyForm").reset();await refreshAdvanced();}
+ catch(err){$("bodyStatus").textContent="儲存失敗："+(err.code||err.message);}
+};
+$("labForm").onsubmit=async e=>{
+ e.preventDefault();if(!user||!allowed(auth.currentUser))return;
+ const date=$("labDate").value;if(!date)return;
+ const metric=(id,unit)=>({value:readNum(id),unit});
+ const blood={triglyceride:metric("labTg","mg/dL"),hdl:metric("labHdl","mg/dL"),ldl:metric("labLdl","mg/dL"),totalCholesterol:metric("labTc","mg/dL"),glucoseAC:metric("labGlucose","mg/dL"),hba1c:metric("labA1c","%"),egfr:metric("labEgfr","mL/min/1.73m2"),totalBilirubin:metric("labBilirubin","mg/dL")};
+ const tg=blood.triglyceride.value,hdl=blood.hdl.value,tc=blood.totalCholesterol.value;
+ const derived={tgHdlRatio:tg!=null&&hdl>0?Math.round(tg/hdl*100)/100:null,nonHdlCholesterol:tc!=null&&hdl!=null?Math.round((tc-hdl)*100)/100:null};
+ const data={date,facility:safeText("labFacility"),blood,urineNotes:safeText("labUrine"),notes:safeText("labNotes"),derived,schemaVersion:3,updatedAt:serverTimestamp()};
+ $("labStatus").textContent="正在儲存…";
+ try{await setDoc(doc(db,"users",user.uid,"labs",date),data,{merge:true});$("labStatus").textContent="檢驗紀錄已儲存（"+date+"）";await refreshAdvanced();}
+ catch(err){$("labStatus").textContent="儲存失敗："+(err.code||err.message);}
+};
+function downloadable(name,text,type){
+ const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+function csvCell(v){const s=String(v??"");return '"'+s.replaceAll('"','""')+'"';}
+async function exportData(kind){
+ if(!user||!allowed(auth.currentUser))return;
+ $("exportStatus").textContent="正在從私人資料庫整理備份…";
+ try{
+  const names=["daily","weeks","bodyComposition","labs"],collections={};
+  for(const name of names){const snap=await getDocs(collection(db,"users",user.uid,name));collections[name]=snap.docs.map(s=>({id:s.id,...s.data(),updatedAt:s.data().updatedAt?.toDate?.()?.toISOString?.()||null}));}
+  const date=taipeiDate();
+  if(kind==="json")downloadable("ben-health-os-backup-"+date+".json",JSON.stringify({format:"ben-health-os-backup-v3",exportedAt:new Date().toISOString(),collections},null,2),"application/json;charset=utf-8");
+  else{
+   const cols=["date","weightKg","sleepHours","waterMl","proteinG","caloriesKcal","dataQuality","foodNotes","exerciseNotes","gutNotes","notes"];
+   const lines=[cols.map(csvCell).join(","),...collections.daily.sort((a,b)=>a.date.localeCompare(b.date)).map(d=>cols.map(k=>csvCell(d[k])).join(","))];
+   downloadable("ben-health-os-daily-"+date+".csv","\uFEFF"+lines.join("\r\n"),"text/csv;charset=utf-8");
+  }
+  $("exportStatus").textContent="已產生 "+kind.toUpperCase()+" 備份（資料僅在本機下載）";
+ }catch(err){$("exportStatus").textContent="匯出失敗："+(err.code||err.message);}
+}
+$("exportJson").onclick=()=>exportData("json");
+$("exportCsv").onclick=()=>exportData("csv");
