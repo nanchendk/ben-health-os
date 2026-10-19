@@ -67,11 +67,12 @@ function renderWeekDailyDetails(recent,start,end){
  for(const name of ["日期","體重","睡眠","飲食紀錄","腸胃／其他"]){const th=document.createElement("th");th.textContent=name;head.append(th);}table.append(head);
  let count=0;
  for(let d=start;d<=end;d=dateShift(d,1)){
-  const row=recent.find(r=>r.date===d);
+  const row=recent.find(r=>r.date===d),future=d>taipeiDate();
   if(row)count++;
   const tr=document.createElement("tr");
+  if(future)tr.classList.add("is-pending");else if(!row)tr.classList.add("is-unreported");
   const cells=[d,row&&typeof row.weightKg==="number"?fmtWeight(row.weightKg):"未回報",row&&typeof row.sleepHours==="number"?row.sleepHours+" 小時":"未回報",row?.foodNotes||"未記錄文字",([row?.dataQuality&&row.dataQuality!=="clean"?"資料品質："+row.dataQuality:null,row?.gutNotes,row?.exerciseNotes,row?.notes].filter(Boolean).join("；"))||"未記錄文字"];
-  for(const value of cells){const td=document.createElement("td");td.textContent=value;tr.append(td);}table.append(tr);
+  for(const value of (future?[d,"未到","未到","未到","未到"]:cells)){const td=document.createElement("td");td.textContent=value;tr.append(td);}table.append(tr);
  }
  const p=document.createElement("p");p.className="hint";p.textContent="此期間共有 "+count+" / 7 天建立每日紀錄；空白數值不代表零。";
  root.append(p,table);
@@ -97,12 +98,12 @@ function renderMetrics(rows){
  for(const [key,id,coverage,unit,digits] of [["sleepHours","sleepAverage","sleepCoverage"," 小時",1],["waterMl","waterAverage","waterCoverage"," ml",0],["proteinG","proteinAverage","proteinCoverage"," g",1],["caloriesKcal","calorieAverage","calorieCoverage"," kcal",0]]){
   const nums=recent.map(d=>d[key]).filter(n=>typeof n==="number"&&Number.isFinite(n)&&n>=0);
   $(id).textContent=nums.length?(nums.reduce((a,b)=>a+b,0)/nums.length).toFixed(digits)+unit:"未回報";
-  $(coverage).textContent=nums.length+" / 7 天有量化紀錄";
+  $(coverage).textContent=nums.length+" / "+elapsed(start,end)+" 已過天有量化紀錄";
  }
  const food=recent.filter(d=>typeof d.foodNotes==="string"&&d.foodNotes.trim()).length;
  const exercise=recent.filter(d=>typeof d.exerciseNotes==="string"&&d.exerciseNotes.trim()).length;
- $("foodCoverage").textContent="飲食文字紀錄："+food+" / 7 天（不等於已計算營養）";
- $("exerciseCoverage").textContent="運動文字紀錄："+exercise+" / 7 天";
+ $("foodCoverage").textContent="飲食文字紀錄："+food+" / "+elapsed(start,end)+" 已過天"（不等於已計算營養）";
+ $("exerciseCoverage").textContent="運動文字紀錄："+exercise+" / "+elapsed(start,end)+" 已過天";
  renderWeekDailyDetails(recent,start,end);
 }
 $("metricWeek").addEventListener("change",()=>renderMetrics(cachedDailyRows));
@@ -305,6 +306,7 @@ async function refreshAdvanced(){
  const bodies=b.docs.map(s=>s.data()).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
  appendRows("bodyList",["日期","設備來源","體重","體脂率","骨骼肌","有效性"],bodies.map(d=>[d.date,d.source,d.weightKg==null?"未回報":d.weightKg+" kg",d.bodyFatPct==null?"未回報":d.bodyFatPct+"%",d.skeletalMuscleKg==null?"未回報":d.skeletalMuscleKg+" kg",d.valid===false?"不納入比較":"有效"]));
  const labs=l.docs.map(s=>s.data()).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+ $("labLatestDate").textContent=labs.length?"（最近："+labs[0].date+"）":"";
  appendRows("labList",["日期","機構","TG","HDL","LDL","總膽紅素"],labs.map(d=>[d.date,d.facility,d.blood?.triglyceride?.value,d.blood?.hdl?.value,d.blood?.ldl?.value,d.blood?.totalBilirubin?.value]));
 }
 $("bodyForm").onsubmit=async e=>{
