@@ -270,6 +270,11 @@ $("importBtn").onclick=async()=>{
   status.textContent="檔案讀取完成，正在驗證資料格式…";
   if(!["ben-health-os-import-v1","ben-health-os-import-v2"].includes(payload.format)||!Array.isArray(payload.daily)||(!payload.week&&!Array.isArray(payload.weeks)))throw Error("檔案格式不符");
   if(payload.daily.length>200)throw Error("單次最多200筆");
+  const dates=payload.daily.map(r=>r.date);
+  if(new Set(dates).size!==dates.length)throw Error("匯入檔含重複日期");
+  if(payload.daily.some(r=>!/^\\d{4}-\\d{2}-\\d{2}$/.test(r.date)))throw Error("每日日期格式錯誤");
+  const review=payload.daily.map(r=>r.date+" "+(typeof r.weightKg==="number"?r.weightKg+"kg":"未記錄體重")).join("\\n");
+  if(!window.confirm("即將匯入私人 Firestore：\\n每日 "+payload.daily.length+" 筆、週報 "+(Array.isArray(payload.weeks)?payload.weeks.length:1)+" 份。\\n既有紀錄僅補空值，不覆蓋原數據。\\n\\n"+review+"\\n\\n確認後才寫入，是否繼續？")){status.textContent="已取消，未寫入資料";return;}
   let saved=0,skipped=0,enriched=0;
   status.textContent="格式驗證通過，共 "+payload.daily.length+" 筆每日紀錄，準備匯入…";
   for(const [index,record] of payload.daily.entries()){
@@ -287,7 +292,7 @@ $("importBtn").onclick=async()=>{
     continue;
    }
    const {date,weightKg=null,sleepHours=null,waterMl=null,gutNotes=null,notes=null,foodNotes=null,exerciseNotes=null,proteinG=null,caloriesKcal=null}=record;
-   await setDoc(ref,{date,weightKg,sleepHours,waterMl,gutNotes,notes,foodNotes,exerciseNotes,proteinG,caloriesKcal,source:"historical-import",updatedAt:serverTimestamp()});saved++;
+   await setDoc(ref,{date,weightKg,sleepHours,waterMl,gutNotes,notes,foodNotes,exerciseNotes,proteinG,caloriesKcal,source:"historical-import",closeoutStatus:"final",finalized:true,updatedAt:serverTimestamp()});saved++;
   }
   status.textContent="每日紀錄處理完成，正在檢查週報…";
   const weekList=Array.isArray(payload.weeks)?payload.weeks:[payload.week];
