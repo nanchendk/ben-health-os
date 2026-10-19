@@ -272,7 +272,7 @@ $("importBtn").onclick=async()=>{
   if(payload.daily.length>200)throw Error("單次最多200筆");
   const dates=payload.daily.map(r=>r.date);
   if(new Set(dates).size!==dates.length)throw Error("匯入檔含重複日期");
-  if(payload.daily.some(r=>!/^\\d{4}-\\d{2}-\\d{2}$/.test(r.date)))throw Error("每日日期格式錯誤");
+  if(payload.daily.some(r=>!/^\d{4}-\d{2}-\d{2}$/.test(r.date)))throw Error("每日日期格式錯誤");
   const review=payload.daily.map(r=>r.date+" "+(typeof r.weightKg==="number"?r.weightKg+"kg":"未記錄體重")).join("\\n");
   if(!window.confirm("即將匯入私人 Firestore：\\n每日 "+payload.daily.length+" 筆、週報 "+(Array.isArray(payload.weeks)?payload.weeks.length:1)+" 份。\\n既有紀錄僅補空值，不覆蓋原數據。\\n\\n"+review+"\\n\\n確認後才寫入，是否繼續？")){status.textContent="已取消，未寫入資料";return;}
   let saved=0,skipped=0,enriched=0;
