@@ -134,7 +134,7 @@ $("importBtn").onclick=async()=>{
   const payload=JSON.parse(await file.text());
   status.textContent="檔案讀取完成，正在驗證資料格式…";
   if(!["ben-health-os-import-v1","ben-health-os-import-v2"].includes(payload.format)||!Array.isArray(payload.daily)||(!payload.week&&!Array.isArray(payload.weeks)))throw Error("檔案格式不符");
-  if(payload.daily.length>31)throw Error("單次最多31筆");
+  if(payload.daily.length>200)throw Error("單次最多200筆");
   let saved=0,skipped=0,enriched=0;
   status.textContent="格式驗證通過，共 "+payload.daily.length+" 筆每日紀錄，準備匯入…";
   for(const [index,record] of payload.daily.entries()){
