@@ -1,4 +1,4 @@
-import{DAILY,WEEKS,HOME,CLINIC,LABS,METS,EXCLUSIONS}from"./dashboard-data.js?v=20261019-firestore-1";
+import{DAILY,WEEKS,HOME,CLINIC,LABS,METS,EXCLUSIONS}from"./dashboard-data.js?v=20261020-labs-2";
 const $=id=>document.getElementById(id);
 const fmt=(x,p=2)=>x==null?"未回報":typeof x==="number"?x.toFixed(p):String(x);
 const td=(x)=>"<td>"+String(x??"未回報").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")+"</td>";
