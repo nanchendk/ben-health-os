@@ -317,7 +317,7 @@ $("bodyForm").onsubmit=async e=>{
  e.preventDefault();if(!user||!allowed(auth.currentUser))return;
  const date=$("bodyDate").value,source=$("bodySource").value;
  if(!date)return;
- const data={date,source,weightKg:readNum("bodyWeight"),bodyFatPct:readNum("bodyFat"),skeletalMuscleKg:readNum("bodyMuscle"),totalBodyWaterKg:readNum("bodyWater"),standardWeightKg:readNum("bodyStandard"),valid:$("bodyValid").value==="true",notes:safeText("bodyNotes"),schemaVersion:3,updatedAt:serverTimestamp()};
+ const data={date,source,deviceModel:safeText("bodyModel"),weightKg:readNum("bodyWeight"),bodyFatPct:readNum("bodyFat"),skeletalMuscleKg:readNum("bodyMuscle"),totalBodyWaterKg:readNum("bodyWater"),standardWeightKg:readNum("bodyStandard"),valid:$("bodyValid").value==="true",notes:safeText("bodyNotes"),schemaVersion:3,updatedAt:serverTimestamp()};
  $("bodyStatus").textContent="正在儲存…";
  try{await addDoc(collection(db,"users",user.uid,"bodyComposition"),data);$("bodyStatus").textContent="體組成紀錄已新增（"+date+"，"+source+"）";$("bodyForm").reset();await refreshAdvanced();}
  catch(err){$("bodyStatus").textContent="儲存失敗："+(err.code||err.message);}
@@ -329,7 +329,7 @@ $("labForm").onsubmit=async e=>{
  const blood={triglyceride:metric("labTg","mg/dL"),hdl:metric("labHdl","mg/dL"),ldl:metric("labLdl","mg/dL"),totalCholesterol:metric("labTc","mg/dL"),glucoseAC:metric("labGlucose","mg/dL"),hba1c:metric("labA1c","%"),egfr:metric("labEgfr","mL/min/1.73m2"),totalBilirubin:metric("labBilirubin","mg/dL")};
  const tg=blood.triglyceride.value,hdl=blood.hdl.value,tc=blood.totalCholesterol.value;
  const derived={tgHdlRatio:tg!=null&&hdl>0?Math.round(tg/hdl*100)/100:null,nonHdlCholesterol:tc!=null&&hdl!=null?Math.round((tc-hdl)*100)/100:null};
- const data={date,facility:safeText("labFacility"),blood,urineNotes:safeText("labUrine"),notes:safeText("labNotes"),derived,schemaVersion:3,updatedAt:serverTimestamp()};
+ const data={date,facility:safeText("labFacility"),reportType:safeText("labReportType"),method:safeText("labMethod"),blood,urineNotes:safeText("labUrine"),notes:safeText("labNotes"),derived,schemaVersion:3,updatedAt:serverTimestamp()};
  $("labStatus").textContent="正在儲存…";
  try{await setDoc(doc(db,"users",user.uid,"labs",date),data,{merge:true});$("labStatus").textContent="檢驗紀錄已儲存（"+date+"）";await refreshAdvanced();}
  catch(err){$("labStatus").textContent="儲存失敗："+(err.code||err.message);}
