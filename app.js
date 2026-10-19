@@ -7,12 +7,44 @@ const auth=getAuth(initializeApp(firebaseConfig)),db=getFirestore(),$=id=>docume
 let user=null;
 const allowed=u=>u?.uid===ownerUid&&u.providerData.some(p=>p.providerId==="google.com");
 $("loginBtn").onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(e){$("loginStatus").textContent=e.code||"登入失敗"}};
+const fmtWeight=n=>Number(n).toFixed(2)+" kg";
+function renderTrend(rows){
+ const el=$("weightChart");el.replaceChildren();
+ const values=rows.filter(d=>typeof d.weightKg==="number"&&Number.isFinite(d.weightKg)).sort((a,b)=>a.date.localeCompare(b.date));
+ if(!values.length){el.textContent="尚無體重資料";return;}
+ const w=800,h=260,p={l:55,r:24,t:28,b:48};
+ const lo=Math.min(...values.map(d=>d.weightKg)),hi=Math.max(...values.map(d=>d.weightKg));
+ const min=Math.floor((lo-0.4)*2)/2,max=Math.ceil((hi+0.4)*2)/2,span=max-min||1;
+ const days=30;
+ const newest=values[values.length-1].date;
+ const end=new Date(newest+"T12:00:00");const first=new Date(end);first.setDate(first.getDate()-(days-1));
+ const x=d=>p.l+((new Date(d+"T12:00:00")-first)/(end-first||1))*(w-p.l-p.r);
+ const y=v=>h-p.b-(v-min)/span*(h-p.t-p.b);
+ const ns="http://www.w3.org/2000/svg",svg=document.createElementNS(ns,"svg");
+ svg.setAttribute("viewBox",`0 0 ${w} ${h}`);svg.setAttribute("aria-hidden","true");
+ const add=(tag,attrs,label)=>{const n=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))n.setAttribute(k,v);if(label!=null)n.textContent=label;svg.append(n);return n;};
+ for(let i=0;i<=4;i++){const v=min+(max-min)*i/4,Y=y(v);add("line",{x1:p.l,x2:w-p.r,y1:Y,y2:Y,stroke:"#e5eaf2"});add("text",{x:p.l-9,y:Y+4,"text-anchor":"end",fill:"#66758c","font-size":"13"},v.toFixed(1));}
+ const visible=values.filter(d=>d.date>=first.toISOString().slice(0,10));
+ if(visible.length>1)add("polyline",{points:visible.map(d=>`${x(d.date)},${y(d.weightKg)}`).join(" "),fill:"none",stroke:"#2676bd","stroke-width":"3","stroke-linecap":"round","stroke-linejoin":"round"});
+ for(const d of visible){const circle=add("circle",{cx:x(d.date),cy:y(d.weightKg),r:5,fill:"#2676bd"});const t=document.createElementNS(ns,"title");t.textContent=d.date+"｜"+fmtWeight(d.weightKg);circle.append(t);}
+ for(const d of [first,end]){const date=d.toISOString().slice(0,10);add("text",{x:x(date),y:h-17,"text-anchor":date===newest?"end":"start",fill:"#66758c","font-size":"13"},date.slice(5));}
+ el.append(svg);
+ const hint=document.createElement("p");hint.className="hint";hint.textContent="顯示 "+visible.length+" 筆體重紀錄｜最新 "+fmtWeight(values[values.length-1].weightKg);el.append(hint);
+}
+function renderWeek15(rows){
+ const days=rows.filter(d=>d.date>="2026-10-19"&&d.date<="2026-10-25"&&typeof d.weightKg==="number"&&Number.isFinite(d.weightKg));
+ $("week15Count").textContent=days.length+" / 7";
+ $("week15Average").textContent=days.length?fmtWeight(days.reduce((sum,d)=>sum+d.weightKg,0)/days.length):"尚無紀錄";
+ $("week15Status").textContent=days.length?"依已回報的 "+days.length+" 天計算；非完整七日週平均。":"恢復正常飲食與輕度運動；等待 Week 15 晨重回報。";
+}
 async function refresh(){
  const uid=user.uid;
- const results=await getDocs(query(collection(db,"users",uid,"daily"),orderBy("date","desc"),limit(14)));
+ const results=await getDocs(query(collection(db,"users",uid,"daily"),orderBy("date","desc"),limit(90)));
+ const rows=results.docs.map(s=>s.data());
+ renderTrend(rows.slice(0,30));renderWeek15(rows);
  const list=$("recentRecords");list.replaceChildren();
  let found=false;
- results.forEach(s=>{const d=s.data(),row=document.createElement("div");row.className="record";
+ results.docs.slice(0,14).forEach(s=>{const d=s.data(),row=document.createElement("div");row.className="record";
  const label=document.createElement("span");label.textContent=[d.date,d.weightKg==null?"體重未回報":d.weightKg+"kg",d.sleepHours==null?"睡眠未回報":d.sleepHours+"小時",d.gutNotes||"腸胃未回報"].join("｜");
  row.append(label);list.append(row);
  if(!found&&typeof d.weightKg==="number"){$("latestWeight").textContent=d.weightKg+" kg";$("weightDate").textContent=d.date;found=true;}
