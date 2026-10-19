@@ -49,7 +49,7 @@ $("importBtn").onclick=async()=>{
   if(payload.daily.length>31)throw Error("單次最多31筆");
   let saved=0,skipped=0;
   for(const record of payload.daily){
-   if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(record.date))throw Error("日期格式不正確");
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(record.date))throw Error("日期格式不正確");
    const ref=doc(db,"users",user.uid,"daily",record.date);
    if((await getDoc(ref)).exists()){skipped++;continue;}
    const {date,weightKg=null,sleepHours=null,waterMl=null,gutNotes=null,notes=null}=record;
