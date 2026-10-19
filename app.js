@@ -41,12 +41,47 @@ function renderWeek15(rows){
 let cachedDailyRows=[];
 function taipeiDate(){return new Date().toLocaleDateString("sv-SE",{timeZone:"Asia/Taipei"});}
 function dateShift(date,offset){const d=new Date(date+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+offset);return d.toISOString().slice(0,10);}
+let cachedWeeks=[];
+function mondayFor(date){const d=new Date(date+"T12:00:00Z");const dow=d.getUTCDay();d.setUTCDate(d.getUTCDate()-((dow+6)%7));return d.toISOString().slice(0,10);}
+function healthWeekId(date){const anchor=new Date("2026-10-19T12:00:00Z"),d=new Date(mondayFor(date)+"T12:00:00Z");const n=15+Math.round((d-anchor)/604800000);return n>=1?"2026-W"+String(n).padStart(2,"0"):null;}
+function weekStart(id){const n=Number(id.slice(-2));return dateShift("2026-10-19",(n-15)*7);}
+function populateWeekOptions(rows,weeks){
+ const select=$("metricWeek"),old=select.value;
+ const ids=new Set(["2026-W15","2026-W14"]);
+ for(const d of rows){if(/^2026-\d{2}-\d{2}$/.test(d.date||"")){const id=healthWeekId(d.date);if(id)ids.add(id);}}
+ for(const w of weeks){if(/^2026-W\d{2}$/.test(w.id||""))ids.add(w.id);}
+ select.replaceChildren();
+ const opt=(value,label)=>{const o=document.createElement("option");o.value=value;o.textContent=label;select.append(o);};
+ for(const id of [...ids].sort().reverse()){
+  const start=weekStart(id),end=dateShift(start,6),n=Number(id.slice(-2));
+  opt(id,(n===15?"本週｜":n===14?"上週｜":"歷史｜")+"Week "+n+"（"+start.slice(5)+"–"+end.slice(5)+"）");
+ }
+ opt("rolling","最近七個日曆日");
+ select.value=[...select.options].some(o=>o.value===old)?old:"2026-W15";
+}
+function renderWeekDailyDetails(recent,start,end){
+ const root=$("weekDailyDetails");root.replaceChildren();
+ const h=document.createElement("h3");h.textContent="每日紀錄明細";root.append(h);
+ const table=document.createElement("table");table.className="week-table";
+ const head=document.createElement("tr");
+ for(const name of ["日期","體重","睡眠","飲食紀錄","腸胃／其他"]){const th=document.createElement("th");th.textContent=name;head.append(th);}table.append(head);
+ let count=0;
+ for(let d=start;d<=end;d=dateShift(d,1)){
+  const row=recent.find(r=>r.date===d);
+  if(row)count++;
+  const tr=document.createElement("tr");
+  const cells=[d,row&&typeof row.weightKg==="number"?fmtWeight(row.weightKg):"未回報",row&&typeof row.sleepHours==="number"?row.sleepHours+" 小時":"未回報",row?.foodNotes||"未記錄文字",([row?.gutNotes,row?.exerciseNotes,row?.notes].filter(Boolean).join("；"))||"未記錄文字"];
+  for(const value of cells){const td=document.createElement("td");td.textContent=value;tr.append(td);}table.append(tr);
+ }
+ const p=document.createElement("p");p.className="hint";p.textContent="此期間共有 "+count+" / 7 天建立每日紀錄；空白數值不代表零。";
+ root.append(p,table);
+}
 function renderMetrics(rows){
  const mode=$("metricWeek").value,today=taipeiDate();
- const start=mode==="previous"?"2026-10-12":mode==="current"?"2026-10-19":dateShift(today,-6);
- const end=mode==="previous"?"2026-10-18":mode==="current"?"2026-10-25":today;
+ const start=mode==="rolling"?dateShift(today,-6):weekStart(mode);
+ const end=mode==="rolling"?today:dateShift(start,6);
  const recent=rows.filter(d=>typeof d.date==="string"&&d.date>=start&&d.date<=end);
- const label=mode==="previous"?"Week 14 正式週":mode==="current"?"Week 15 本週":"最近七個日曆日";
+ const label=mode==="rolling"?"最近七個日曆日":"Week "+Number(mode.slice(-2));
  $("metricPeriod").textContent="統計期間："+start+" ～ "+end+"｜"+label+"（未回報不補零）";
  for(const [key,id,coverage,unit,digits] of [["sleepHours","sleepAverage","sleepCoverage"," 小時",1],["waterMl","waterAverage","waterCoverage"," ml",0],["proteinG","proteinAverage","proteinCoverage"," g",1],["caloriesKcal","calorieAverage","calorieCoverage"," kcal",0]]){
   const nums=recent.map(d=>d[key]).filter(n=>typeof n==="number"&&Number.isFinite(n)&&n>=0);
@@ -57,6 +92,7 @@ function renderMetrics(rows){
  const exercise=recent.filter(d=>typeof d.exerciseNotes==="string"&&d.exerciseNotes.trim()).length;
  $("foodCoverage").textContent="飲食文字紀錄："+food+" / 7 天（不等於已計算營養）";
  $("exerciseCoverage").textContent="運動文字紀錄："+exercise+" / 7 天";
+ renderWeekDailyDetails(recent,start,end);
 }
 $("metricWeek").addEventListener("change",()=>renderMetrics(cachedDailyRows));
 const formFields=["weight","sleepHours","waterMl","proteinG","caloriesKcal","foodNotes","exerciseNotes","gutNotes","notes"];
@@ -97,7 +133,7 @@ async function refresh(){
  const results=await getDocs(query(collection(db,"users",uid,"daily"),orderBy("date","desc"),limit(200)));
  const rows=results.docs.map(s=>s.data());
  cachedDailyRows=rows;
- renderTrend(rows.slice(0,30));renderWeek15(rows);renderMetrics(rows);
+ renderTrend(rows.slice(0,30));renderWeek15(rows);
  const list=$("recentRecords");list.replaceChildren();
  let found=false;
  results.docs.slice(0,14).forEach(s=>{const d=s.data(),row=document.createElement("div");row.className="record";
@@ -106,7 +142,9 @@ async function refresh(){
  if(!found&&typeof d.weightKg==="number"){$("latestWeight").textContent=d.weightKg+" kg";$("weightDate").textContent=d.date;found=true;}
  });
  const weekly=await getDocs(collection(db,"users",uid,"weeks"));
- renderWeeklyOverview(weekly.docs.map(s=>({id:s.id,...s.data()})),rows);
+ cachedWeeks=weekly.docs.map(s=>({id:s.id,...s.data()}));
+ renderWeeklyOverview(cachedWeeks,rows);
+ populateWeekOptions(rows,cachedWeeks);renderMetrics(rows);
  const week=await getDoc(doc(db,"users",uid,"weeks","2026-W14"));
  if(week.exists()){const w=week.data();$("weekAverage").textContent=typeof w.averageWeightKg==="number"?w.averageWeightKg+" kg":"未回報";$("weekStatus").textContent=w.status||"未回報";}
 }
