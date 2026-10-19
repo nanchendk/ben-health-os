@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow,noarchive">
   <title>Ben Health OS｜私人健康儀表板</title>
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles.css?v=20261019-4">
 </head>
 <body>
   <main class="app">
@@ -21,6 +21,8 @@
         <article class="card"><h2>最新體重</h2><strong class="big-number" id="latestWeight">未回報</strong><p class="hint" id="weightDate">尚無紀錄</p></article>
         <article class="card"><h2>Week 14｜恢復觀察</h2><strong class="big-number" id="weekAverage">未匯入</strong><p class="hint" id="weekStatus">尚無週報資料</p></article>
       </div>
+      <section class="card"><h2>體重趨勢｜最近 30 天</h2><p class="hint">僅顯示已回報的晨間體重；缺漏日期不補值。</p><div id="weightChart" class="chart-area" role="img" aria-label="晨間體重趨勢圖"></div></section>
+      <section class="card"><h2>Week 15｜10/19–10/25</h2><div class="grid"><div><p class="hint">本週平均體重</p><strong class="big-number" id="week15Average">尚無紀錄</strong></div><div><p class="hint">已回報天數</p><strong class="big-number" id="week15Count">0 / 7</strong></div></div><p id="week15Status" class="hint">恢復正常飲食與輕度運動；依實際紀錄統計。</p></section>
       <section class="card"><h2>每日健康紀錄</h2><p class="hint">未回報欄位保持空白，不會自動視為 0。資料僅儲存於授權的 Firestore 路徑。</p>
         <form id="dailyForm" class="form-grid">
           <label>日期<input id="recordDate" type="date" required></label>
@@ -54,6 +56,6 @@
     }
   });
 </script>
-<script type="module" src="./app.js?v=20261019-3"></script>
+<script type="module" src="./app.js?v=20261019-4"></script>
 </body>
 </html>
