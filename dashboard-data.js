@@ -2,8 +2,8 @@ import{initializeApp,getApps,getApp}from"https://www.gstatic.com/firebasejs/11.1
 import{getAuth,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import{getFirestore,collection,getDocs}from"https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 import{firebaseConfig,ownerUid}from"./firebase-config.js";
-const app=getApps().length?getApp():initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
-const user=await new Promise(resolve=>{const unsub=onAuthStateChanged(auth,u=>{unsub();resolve(u)},()=>resolve(null))});
+const app=getApps().find(a=>a.options.projectId===firebaseConfig.projectId)||initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+const user=await auth.authStateReady().then(()=>auth.currentUser);
 if(!user||user.uid!==ownerUid||!user.providerData.some(p=>p.providerId==="google.com"))throw Error("帳號未授權");
 const names=["daily","weeks","bodyComposition","labs"];
 const snaps=await Promise.all(names.map(n=>getDocs(collection(db,"users",user.uid,n))));
