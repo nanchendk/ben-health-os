@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow,noarchive">
   <title>Ben Health OS｜私人健康儀表板</title>
-  <link rel="stylesheet" href="./styles.css?v=20261019-5">
+  <link rel="stylesheet" href="./styles.css?v=20261019-6">
 </head>
 <body>
   <main class="app">
@@ -24,6 +24,7 @@
       <section class="card"><h2>體重趨勢｜最近 30 天</h2><p class="hint">僅顯示已回報的晨間體重；缺漏日期不補值。</p><div id="weightChart" class="chart-area" role="img" aria-label="晨間體重趨勢圖"></div></section>
       <section class="card"><h2>Week 15｜10/19–10/25</h2><div class="grid"><div><p class="hint">本週平均體重</p><strong class="big-number" id="week15Average">尚無紀錄</strong></div><div><p class="hint">已回報天數</p><strong class="big-number" id="week15Count">0 / 7</strong></div></div><p id="week15Status" class="hint">恢復正常飲食與輕度運動；依實際紀錄統計。</p></section>
       <section class="card"><h2>健康指標｜最近 7 天</h2><p class="hint">各指標僅以實際回報日計算；未回報不視為零。</p><div class="metric-grid"><div class="metric"><span>平均睡眠</span><strong id="sleepAverage">未回報</strong><small id="sleepCoverage">0 天</small></div><div class="metric"><span>平均飲水</span><strong id="waterAverage">未回報</strong><small id="waterCoverage">0 天</small></div><div class="metric"><span>平均蛋白質</span><strong id="proteinAverage">未回報</strong><small id="proteinCoverage">0 天</small></div><div class="metric"><span>平均熱量</span><strong id="calorieAverage">未回報</strong><small id="calorieCoverage">0 天</small></div></div><p id="metricPeriod" class="hint"></p></section>
+      <section class="card"><h2>歷史週報總覽</h2><p class="hint">依據已核對的週報與每日資料顯示；疾病週另行標示。</p><div id="weeklyOverview" class="weekly-overview">讀取中…</div></section>
       <section class="card"><h2>每日健康紀錄</h2><p class="hint">選擇日期後會載入當日既有資料，避免意外覆蓋。未回報欄位保持空白，不會自動視為 0。資料僅儲存於授權的 Firestore 路徑。</p>
         <form id="dailyForm" class="form-grid">
           <label>日期<input id="recordDate" type="date" required></label>
@@ -40,7 +41,7 @@
         </form>
         <p id="saveStatus" class="hint" role="status"></p>
       </section>
-      <section class="card"><h2>匯入歷史健康紀錄</h2><p class="hint">僅在登入後讀取本機 JSON 檔並寫入你的私人 Firestore；不會將健康資料上傳至 GitHub。已有資料不覆蓋。</p><input type="file" id="importFile" accept=".json,application/json"><button id="importBtn" type="button">匯入選取檔案</button><p id="importStatus" class="hint" role="status"></p></section><section class="card"><h2>最近紀錄</h2><div id="recentRecords" class="records"><p class="hint">尚無資料</p></div></section>
+      <section class="card"><h2>匯入歷史健康紀錄</h2><p class="hint">支援一次匯入多週 JSON。資料僅寫入私人 Firestore，不會上傳至 GitHub；已有日期及週報不覆蓋。</p><input type="file" id="importFile" accept=".json,application/json"><button id="importBtn" type="button">匯入選取檔案</button><p id="importStatus" class="hint" role="status"></p></section><section class="card"><h2>最近紀錄</h2><div id="recentRecords" class="records"><p class="hint">尚無資料</p></div></section>
     </section>
   </main>
   <script>
