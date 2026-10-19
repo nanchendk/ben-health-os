@@ -1,95 +1,41 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Ben Health OS</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>Ben Health OS｜私人健康儀表板</title>
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <main class="app">
-    <header class="hero">
-      <div>
-        <p class="eyebrow">AI Personal Health Dashboard</p>
-        <h1>Ben Health OS</h1>
-        <p class="subtitle">98kg → 80kg｜專屬減脂儀表板</p>
-      </div>
-      <div class="score-card">
-        <span>今日分數</span>
-        <strong id="dailyScore">95</strong>
-        <small>/100</small>
-      </div>
-    </header>
-
-    <section class="grid">
-      <article class="card weight-card">
-        <h2>體重進度</h2>
-        <div class="weight-row">
-          <strong id="currentWeight">98.0</strong><span>kg</span>
-          <small>目標 80kg</small>
-        </div>
-        <div class="progress"><div id="weightProgress"></div></div>
-        <p id="weightText" class="hint"></p>
-      </article>
-
-      <article class="card">
-        <h2>下一餐建議</h2>
-        <p id="nextMealMain" class="big-text">晚餐以清爽蛋白＋蔬菜為主，澱粉減量。</p>
-        <div id="nextMealChips" class="chips"></div>
-      </article>
+    <header class="hero"><div><p class="eyebrow">PRIVATE HEALTH DASHBOARD</p><h1>Ben Health OS</h1><p class="subtitle">私人健康管理 · Firebase 安全登入</p></div><div id="accountArea"></div></header>
+    <section id="loginView" class="card login">
+      <h2>私人健康儀表板</h2>
+      <p>登入並通過帳號驗證後，才會向私人資料庫讀取健康紀錄。</p>
+      <button id="loginBtn" type="button">使用 Google 帳號登入</button>
+      <p id="loginStatus" class="hint" role="status">等待登入</p>
     </section>
-
-    <section class="grid">
-      <article class="card">
-        <h2>今日量化</h2>
-        <div class="metric"><span>預估熱量</span><strong id="calories">520 kcal</strong></div>
-        <div class="metric"><span>蛋白質</span><strong id="protein">35 g</strong></div>
-        <div class="metric"><span>飲水</span><strong id="water">1600 / 2200 ml</strong></div>
-        <div class="metric"><span>運動</span><strong id="exercise">彈力繩 15 min</strong></div>
-      </article>
-
-      <article class="card">
-        <h2>本週健康雷達</h2>
-        <div id="radarList" class="radar-list"></div>
-      </article>
-    </section>
-
-    <section class="card">
-      <h2>今日餐點紀錄</h2>
-      <div id="mealList" class="meal-list"></div>
-    </section>
-
-    <section class="card">
-      <h2>新增餐點</h2>
-      <div class="form-grid">
-        <label>餐別
-          <select id="mealType">
-            <option value="breakfast">早餐</option>
-            <option value="lunch" selected>午餐</option>
-            <option value="dinner">晚餐</option>
-            <option value="snack">加餐</option>
-          </select>
-        </label>
-        <label>餐點描述
-          <input id="mealDesc" placeholder="例：紫米飯、白肉魚、蒸蛋、花椰菜" />
-        </label>
-        <label>熱量 kcal
-          <input id="mealKcal" type="number" placeholder="例：550" />
-        </label>
-        <label>蛋白質 g
-          <input id="mealProtein" type="number" placeholder="例：35" />
-        </label>
-        <label>雞蛋等效顆數
-          <input id="mealEgg" type="number" step="0.5" placeholder="例：1.5" />
-        </label>
-        <label>評分
-          <input id="mealScore" type="number" placeholder="例：95" />
-        </label>
+    <section id="dashboardView" hidden>
+      <div class="grid">
+        <article class="card"><h2>最新體重</h2><strong class="big-number" id="latestWeight">未回報</strong><p class="hint" id="weightDate">尚無紀錄</p></article>
+        <article class="card"><h2>Week 14｜恢復觀察</h2><strong class="big-number" id="weekAverage">未匯入</strong><p class="hint" id="weekStatus">尚無週報資料</p></article>
       </div>
-      <button id="addMealBtn">加入紀錄並更新儀表板</button>
-      <p class="hint">v1 先手動輸入；下一版再接「拍照 → AI 辨識 → 自動帶入」。</p>
+      <section class="card"><h2>每日健康紀錄</h2><p class="hint">未回報欄位保持空白，不會自動視為 0。資料僅儲存於授權的 Firestore 路徑。</p>
+        <form id="dailyForm" class="form-grid">
+          <label>日期<input id="recordDate" type="date" required></label>
+          <label>晨間體重（kg）<input id="weight" type="number" min="20" max="300" step="0.05" placeholder="未回報"></label>
+          <label>睡眠（小時）<input id="sleepHours" type="number" min="0" max="24" step="0.1" placeholder="未回報"></label>
+          <label>飲水（ml）<input id="waterMl" type="number" min="0" max="15000" step="1" placeholder="未回報"></label>
+          <label>排便與腸胃狀況<textarea id="gutNotes" rows="3" placeholder="未回報"></textarea></label>
+          <label>其他紀錄<textarea id="notes" rows="3" placeholder="未回報"></textarea></label>
+          <div><button type="submit" id="saveBtn">儲存私人紀錄</button></div>
+        </form>
+        <p id="saveStatus" class="hint" role="status"></p>
+      </section>
+      <section class="card"><h2>最近紀錄</h2><div id="recentRecords" class="records"><p class="hint">尚無資料</p></div></section>
     </section>
   </main>
-  <script src="./app.js"></script>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>
