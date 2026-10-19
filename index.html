@@ -33,7 +33,7 @@
         </form>
         <p id="saveStatus" class="hint" role="status"></p>
       </section>
-      <section class="card"><h2>最近紀錄</h2><div id="recentRecords" class="records"><p class="hint">尚無資料</p></div></section>
+      <section class="card"><h2>匯入歷史健康紀錄</h2><p class="hint">僅在登入後讀取本機 JSON 檔並寫入你的私人 Firestore；不會將健康資料上傳至 GitHub。已有資料不覆蓋。</p><input type="file" id="importFile" accept=".json,application/json"><button id="importBtn" type="button">匯入選取檔案</button><p id="importStatus" class="hint" role="status"></p></section><section class="card"><h2>最近紀錄</h2><div id="recentRecords" class="records"><p class="hint">尚無資料</p></div></section>
     </section>
   </main>
   <script>
