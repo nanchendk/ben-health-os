@@ -41,3 +41,12 @@ input,textarea,select{background:#fff!important;color:#0f2a4f!important;border:1
 .v4-module small{color:#66758c;font-size:.85rem;line-height:1.5}
 .v4-rule{margin:0 10px 22px;color:#596a80;font-size:.85rem}
 @media(max-width:650px){.v4-module-nav{grid-template-columns:1fr}.hero{padding:22px!important}}
+
+/* Information-first dashboard: summary and comparisons precede optional data entry. */
+#summaryCards{margin-top:10px}
+#summaryCards .card{border-top:3px solid #c9a961}
+#summaryCards .big-number{color:#0f2a4f}
+#progressSection,#qualitySection,#metricsSection,#trendSection,#weeklySection{scroll-margin-top:16px}
+#quickSection{margin-top:28px;border:1px solid #dbe2eb;background:#f8fafc!important}
+#quickSection::before{content:"補充操作｜手動輸入（非每日主要流程）";display:block;color:#66758c;font-size:.78rem;letter-spacing:.04em;margin-bottom:10px}
+#bodyArchive,#labArchive{scroll-margin-top:20px}
