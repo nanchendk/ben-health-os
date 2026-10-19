@@ -42,25 +42,33 @@ $("importBtn").onclick=async()=>{
  const status=$("importStatus"),file=$("importFile").files[0],button=$("importBtn");
  if(!user||!allowed(auth.currentUser)){status.textContent="請先登入授權帳號";return;}
  if(!file){status.textContent="請先選取 JSON 檔";return;}
+ status.textContent="正在讀取檔案："+file.name;
  button.disabled=true;
  try{
   const payload=JSON.parse(await file.text());
+  status.textContent="檔案讀取完成，正在驗證資料格式…";
   if(payload.format!=="ben-health-os-import-v1"||!Array.isArray(payload.daily)||!payload.week)throw Error("檔案格式不符");
   if(payload.daily.length>31)throw Error("單次最多31筆");
   let saved=0,skipped=0;
-  for(const record of payload.daily){
+  status.textContent="格式驗證通過，共 "+payload.daily.length+" 筆每日紀錄，準備匯入…";
+  for(const [index,record] of payload.daily.entries()){
+   status.textContent="正在處理第 "+(index+1)+"/"+payload.daily.length+" 筆（"+record.date+"）；已新增 "+saved+" 筆、略過 "+skipped+" 筆";
    if(!/^\d{4}-\d{2}-\d{2}$/.test(record.date))throw Error("日期格式不正確");
    const ref=doc(db,"users",user.uid,"daily",record.date);
    if((await getDoc(ref)).exists()){skipped++;continue;}
    const {date,weightKg=null,sleepHours=null,waterMl=null,gutNotes=null,notes=null}=record;
    await setDoc(ref,{date,weightKg,sleepHours,waterMl,gutNotes,notes,source:"historical-import",updatedAt:serverTimestamp()});saved++;
   }
+  status.textContent="每日紀錄處理完成，正在檢查週報…";
+  if(typeof payload.week.id!=="string"||!payload.week.id)throw Error("週報 ID 缺漏");
   const weekRef=doc(db,"users",user.uid,"weeks",payload.week.id);
   if(!(await getDoc(weekRef)).exists()){
    const {id,...weekData}=payload.week;
    await setDoc(weekRef,{...weekData,source:"historical-import",updatedAt:serverTimestamp()});
   }
-  status.textContent="匯入完成：新增 "+saved+" 天，略過既有 "+skipped+" 天。";await refresh();
+  status.textContent="匯入完成：新增 "+saved+" 天，略過既有 "+skipped+" 天。正在更新儀表板…";
+  try{await refresh();status.textContent="匯入完成：新增 "+saved+" 天，略過既有 "+skipped+" 天。";}
+  catch(refreshError){status.textContent="資料已寫入，但儀表板更新失敗："+(refreshError.code||refreshError.message);}
  }catch(e){status.textContent="匯入失敗："+(e.code||e.message);}
  finally{button.disabled=false;}
 };
