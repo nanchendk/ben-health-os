@@ -76,6 +76,17 @@ function renderWeekDailyDetails(recent,start,end){
  const p=document.createElement("p");p.className="hint";p.textContent="此期間共有 "+count+" / 7 天建立每日紀錄；空白數值不代表零。";
  root.append(p,table);
 }
+function renderV3Summary(rows){
+ const week=rows.filter(d=>d.date>="2026-10-19"&&d.date<="2026-10-25");
+ const weights=week.filter(d=>typeof d.weightKg==="number"&&d.excludeFromTrend!==true);
+ const protein=week.filter(d=>typeof d.proteinG==="number");
+ const resistance=week.filter(d=>d.exercise?.resistance?.done===true||/彈力繩.*(完成|[0-9]+\s*分鐘)/.test(d.exerciseNotes||""));
+ const gut=week.filter(d=>(typeof d.gutNotes==="string"&&d.gutNotes.trim())||d.gut?.events?.length||d.gut?.noStoolToday===true);
+ $("v3Weight").textContent=weights.length+" / 7 天";
+ $("v3Protein").textContent=protein.length?protein.filter(d=>d.proteinG>=120).length+" / "+protein.length+" 天達標":"未回報";
+ $("v3Resistance").textContent=resistance.length+" / 7 天";
+ $("v3Gut").textContent=gut.length+" / 7 天";
+}
 function renderMetrics(rows){
  const mode=$("metricWeek").value,today=taipeiDate();
  const start=mode==="rolling"?dateShift(today,-6):weekStart(mode);
@@ -168,7 +179,7 @@ async function refresh(){
  const results=await getDocs(query(collection(db,"users",uid,"daily"),orderBy("date","desc"),limit(200)));
  const rows=results.docs.map(s=>s.data());
  cachedDailyRows=rows;
- renderTrend(rows.slice(0,30));renderWeek15(rows);
+ renderTrend(rows.slice(0,30));renderWeek15(rows);renderV3Summary(rows);
  const list=$("recentRecords");list.replaceChildren();
  let found=false;
  results.docs.slice(0,14).forEach(s=>{const d=s.data(),row=document.createElement("div");row.className="record";
