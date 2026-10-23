@@ -404,7 +404,7 @@ function renderWeek() {
   const notes = [];
   const missing = [];
   for (let i = 0; i < 7; i++) { const d = addDays(start, i); if (d <= dataThrough && typeof dailyMap[d]?.weightKg !== 'number') missing.push(d); }
-  if (w.trainingReportedDays && w.trainingDays < T.trainingPerWeek) notes.push([`本週重訓 ${w.trainingDays} 次，還差 ${T.trainingPerWeek - w.trainingDays} 次`, `目標每週 ${T.trainingPerWeek} 次；本週含今天還剩 ${remaining} 天。`]);
+
   if (w.proteinReportedDays) notes.push([`蛋白質 ${w.proteinReportedDays} 天中有 ${w.proteinTargetHitDays} 天達 ${T.proteinMinG} g`, `日均 ${fmt(w.proteinG.avg, 0)} g${w.proteinG.includesEstimate ? '，含估算值' : ''}；目標 ${T.proteinMinG}–${T.proteinMaxG} g。`]);
   if (missing.length) notes.push([`${missing.map((d) => `${md(d)}（${wd(d)}）`).join('、')} 在 Firestore 缺少每日體重`, w.weightKg.historicalOfficial ? `本週 ${fmt(w.weightKg.avg,2)} kg 採歷史正式結案平均，不是以目前 Firestore ${w.reportedDays} 天重新計算；請勿將資料庫缺筆誤判為當天未回報。` : `目前週平均以 ${w.weightKg.n} 天計算，缺少的每日紀錄未納入。`]);
   if (w.waterMl.n > 0 && w.waterMl.n < w.reportedDays) notes.push([`飲水只有 ${w.waterMl.n} 天有紀錄`, `有紀錄的日均 ${fmt(w.waterMl.avg, 0)} ml，紀錄天數太少，暫不判讀。`]);
@@ -443,12 +443,14 @@ function renderWeek() {
     </section>
 
     <section aria-labelledby="h-goals">
-      <h2 id="h-goals">本週目標</h2>
-      <div class="goals">
-        ${goalCard('蛋白質達標', w.proteinReportedDays?w.proteinTargetHitDays:(w.proteinG.historical?'有歷史估算':'未回報'), w.proteinReportedDays?` / ${w.proteinReportedDays} 天`:'', `日均 ${fmt(w.proteinG.avg, 0)} g，目標 ${T.proteinMinG}–${T.proteinMaxG} g${w.proteinG.includesEstimate ? ' <span class="badge est">含估算</span>' : ''}`,
-          `<div class="bar"><i style="width:${Math.min(100, (w.proteinG.avg||0) / T.proteinMinG * 100)}%"></i></div>`)}
-        ${goalCard('睡眠', w.sleepH.n?fmt(w.sleepH.avg):'未回報', w.sleepH.n?' 小時':'', `${w.sleepH.n} 天有紀錄的平均`)}
-        ${goalCard('紀錄完整度', w.weightKg.n, ' / 7 天', '實心為有體重紀錄', `<div class="days">${dots}</div>`)}
+      <h2 id="h-goals">本週健康摘要</h2>
+      <div class="mgrid">
+        <div class="m"><span>平均體重</span><strong>${fmt(w.weightKg.avg, 2)} kg</strong><em>${w.weightKg.historicalOfficial?'歷史正式結案平均':w.weightKg.n+' 天體重紀錄的平均'}</em></div>
+        <div class="m"><span>週變化</span>${w.vsPrevWeek ? (w.vsPrevWeek.comparable ? `<strong>${signed(w.vsPrevWeek.deltaKg, 2)} kg</strong><em>與第 ${w.week-1} 週相比</em>` : `<strong>不比較</strong><em>${w.excludeFromFatLoss?'本週為干擾週':'前週為干擾週'}</em>`) : '<strong class="muted">—</strong><em>沒有可比較的前週</em>'}</div>
+        <div class="m"><span>蛋白質</span>${w.proteinG.historical ? `<strong>${esc(w.proteinG.rangeText)}</strong><em>歷史營養估算，非每日實測</em>` : w.proteinG.n ? `<strong>${fmt(w.proteinG.avg, 0)} g/日</strong><em>${w.proteinReportedDays} 天紀錄${w.proteinG.includesEstimate?'，含估算':''}</em>` : '<strong class="muted">無可靠週平均</strong><em>不代表當週未攝取</em>'}</div>
+        <div class="m"><span>睡眠</span>${w.sleepH.historical ? `<strong>${esc(w.sleepH.rangeText)}</strong><em>歷史結案估算</em>` : w.sleepH.n ? `<strong>${fmt(w.sleepH.avg, 1)} 小時</strong><em>${w.sleepH.n} 天有紀錄</em>` : '<strong class="muted">未回報</strong><em>無可靠睡眠平均</em>'}</div>
+        <div class="m"><span>熱量</span>${w.kcal.historical ? `<strong>${esc(w.kcal.rangeText)}</strong><em>歷史估算，非每日實測</em>` : w.kcal.n ? `<strong>${fmt(w.kcal.avg, 0)} kcal/日</strong><em>${w.kcal.n} 天有紀錄${w.kcal.includesEstimate?'，含估算':''}</em>` : '<strong class="muted">無可靠週平均</strong><em>餐點紀錄不代表七日完整攝取</em>'}</div>
+        <div class="m"><span>每日體重紀錄</span><strong>${w.reportedDays} / 7 天</strong><em>已有每日體重紀錄${w.weightKg.historicalOfficial?'；週平均採正式結案值':''}</em><div class="days">${dots}</div></div>
       </div>
     </section>
 
