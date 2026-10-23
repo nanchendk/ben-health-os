@@ -223,6 +223,11 @@ td.num,th.num{text-align:right}
 
 <nav class="bottom" aria-label="主要分頁" id="bottom"></nav>
 
+<section id="mobileBootStatus" class="wrap" role="status" style="padding:24px 16px;max-width:760px;margin:auto"><div class="panel"><h2>正在載入 Ben Health OS 2.0</h2><p>若畫面持續空白，請使用 Safari 開啟本頁，或重新整理。登入與資料載入狀態會顯示在這裡。</p><p id="mobileBootError" style="overflow-wrap:anywhere;color:#9a4512"></p></div></section>
+<script>
+window.addEventListener('error',function(e){var x=document.getElementById('mobileBootError');if(x)x.textContent='程式載入異常：'+(e.message||'未知錯誤')});
+window.addEventListener('unhandledrejection',function(e){var x=document.getElementById('mobileBootError');if(x)x.textContent='資料或登入載入異常：'+(e.reason?.code||e.reason?.message||'未知錯誤')});
+</script>
 <script type="module">
 /* ------------------------------------------------------------------
    示意資料。欄位名稱與 ben-health-data 同步到 Firestore 的格式一致：
@@ -613,7 +618,7 @@ import{firebaseConfig,ownerUid}from'./firebase-config.js';
 const auth=getAuth(initializeApp(firebaseConfig)),db=getFirestore(auth.app);
 let activeUser=null;
 const gate=document.createElement('section');gate.className='panel';gate.style='max-width:460px;margin:48px auto;text-align:center';gate.innerHTML='<h1>Ben Health OS 2.0</h1><p>登入授權 Google 帳號後，才會讀取私人健康資料。</p><button class="primary" id="googleLogin">使用 Google 登入</button><p id="loginMsg" role="status"></p>';
-document.querySelector('main').before(gate);
+document.querySelector('main').before(gate);document.querySelector('#mobileBootStatus').hidden=true;
 document.querySelector('main').hidden=true;document.querySelector('.top').hidden=true;document.querySelector('.bottom').hidden=true;
 const isMobileBrowser=()=>/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 getRedirectResult(auth).catch(e=>{$('#loginMsg').textContent='登入返回失敗：'+(e.code||e.message)});
@@ -726,7 +731,7 @@ async function loadRealData(user){
 onAuthStateChanged(auth,async user=>{
  lockMedical(false);activeUser=null;
  const allowed=!!user&&user.uid===ownerUid&&user.providerData.some(p=>p.providerId==='google.com');
- gate.hidden=allowed;document.querySelector('main').hidden=!allowed;document.querySelector('.top').hidden=!allowed;document.querySelector('.bottom').hidden=!allowed;
+ document.querySelector('#mobileBootStatus').hidden=true;gate.hidden=allowed;document.querySelector('main').hidden=!allowed;document.querySelector('.top').hidden=!allowed;document.querySelector('.bottom').hidden=!allowed;
  if(!allowed){$('#loginMsg').textContent=user?'這個帳號未獲授權':'請使用 Google 帳號登入';return}
  activeUser=user;
  document.querySelector('#historicalImport').hidden=false;
