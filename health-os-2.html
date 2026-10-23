@@ -458,7 +458,7 @@ function renderTrend() {
   const vs = w.vsPrevWeek
     ? (w.vsPrevWeek.comparable ? `<strong>${signed(w.vsPrevWeek.deltaKg, 2)} kg</strong><em>與第 ${w.week - 1} 週相比</em>` : `<strong>不比較</strong><em>${byWeek[w.week].excludeFromFatLoss ? '本週為干擾週' : `第 ${w.week - 1} 週為干擾週`}</em>`)
     : '<strong>—</strong><em>沒有前一週資料</em>';
-  const stat = (o, d, unit) => (o?.historical ? `<strong>${esc(o.rangeText||fmt(o.avg,d)+' '+unit)}</strong><em>歷史結案估算${o.sourceLabel?' · '+esc(o.sourceLabel):''}</em>` : o.n ? `<strong>${fmt(o.avg, d)} ${unit}</strong><em>${o.n} 天有紀錄${o.includesEstimate ? '，含估算' : ''}</em>` : '<strong class="muted">無可靠週平均</strong><em>已有歷史紀錄時仍須核對完整七日資料</em>');
+  const stat = (o, d, unit) => (o?.historical ? `<strong>${esc(o.rangeText||fmt(o.avg,d)+' '+unit)}</strong><em>歷史結案估算${o.sourceLabel?' · '+esc(o.sourceLabel):''}</em>` : o.n ? `<strong>${fmt(o.avg, d)} ${unit}</strong><em>${o.n} 天有紀錄${o.includesEstimate ? '，含估算' : ''}</em>` : '<strong class="muted">無可靠週平均</strong><em>已有餐點資料，但未證實七日完整攝取</em>');
 
   const strip = hasDaily ? `<h3 class="small muted" style="margin:18px 0 8px">每日體重</h3><div class="strip">${Array.from({ length: 7 }, (_, i) => {
     const d = addDays(start, i), x = dailyMap[d];
@@ -635,6 +635,12 @@ function applyHistory(w,h){
  w.nutritionStatus=h.nutritionStatus||w.nutritionStatus||'';
  if(!w.note&&typeof h.status==='string'&&h.status!=='open'&&h.status!=='closed')w.note=h.status;
  w.historicalNutritionNote=note||'歷史摘要未提供可核對的七日營養平均；不代表當週沒有飲食紀錄。';
+ // W13/W14 原始歷史檔含逐日餐點文字，但多日未確認全部餐次與份量。
+ // 不將「有餐點」誤算成完整七日攝取平均；直接顯示可核對的逐日紀錄覆蓋。
+ if((w.week===13||w.week===14)&&!w.kcal?.historical&&!w.kcal?.n){
+   w.historicalNutritionNote=(w.week===13?'W13：10/05～10/11 有逐日餐點描述，10/10、10/11 有局部營養估算；':'W14：10/12～10/18 有逐日餐點描述，10/16 聚餐 1700 kcal 為記帳假設而非實測；')+'餐點紀錄不能證明所有餐次完整，故不宣稱七日熱量或蛋白質平均。'+(note?' 原週報：'+note:'');
+   w.nutritionCoverage='已有七日餐點文字；全日攝取完整度未確認';
+ }
  w.historicalSource='歷史匯入 JSON';
  if(!w.strategy&&h.exerciseStatus)w.exerciseStatus=h.exerciseStatus;
  if(h.exerciseStatus){w.exerciseStatus=h.exerciseStatus;if(/(?:正式阻力訓練|阻力訓練)\s*0\s*次/.test(h.exerciseStatus)){w.trainingDays=0;w.trainingReportedDays=7;w.trainingHistorical=true;}}
