@@ -653,6 +653,11 @@ function applyHistory(w,h){
  const protein=range(nut.proteinGPerDayRange,null,'g/日')||dailyAverage('protein','g/日')||parsedRange(proteinText,'g/日');
  if(kcal&&!w.kcal?.n)w.kcal=kcal;
  if(protein&&!w.proteinG?.n)w.proteinG=protein;
+ if(w.week===14&&!w.kcal?.n&&!w.kcal?.historical){
+ w.kcal={avg:1575,n:0,historical:true,rangeText:'約 1220–1930 kcal/有紀錄日',sourceLabel:'六日有記錄餐點估算，非完整七日平均'};
+ w.proteinG={avg:73.5,n:0,historical:true,rangeText:'約 53–94 g/有紀錄日',sourceLabel:'六日有記錄餐點估算，非完整七日平均'};
+ w.nutritionStatus='W14 六日已記錄餐點估算；10/16 聚餐記帳假設排除，10/18 餐次不完整。';
+ }
  if(!w.kcal?.n&&!w.kcal?.historical&&typeof h.averageEnergyKcalEstimate==='number')w.kcal={avg:h.averageEnergyKcalEstimate,n:0,historical:true,rangeText:h.averageEnergyKcalEstimate+' kcal/日',sourceLabel:'疾病期估算'};
  if(!w.proteinG?.n&&!w.proteinG?.historical&&typeof h.averageProteinGEstimate==='number')w.proteinG={avg:h.averageProteinGEstimate,n:0,historical:true,rangeText:h.averageProteinGEstimate+' g/日',sourceLabel:'疾病期估算'};
  // 僅當週摘要明確提供平均值時才顯示，不將缺漏補零
