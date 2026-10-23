@@ -508,7 +508,7 @@ function renderTrend() {
         <div class="m"><span>睡眠</span>${stat(w.sleepH, 1, '小時')}</div>
         <div class="m"><span>飲水</span>${stat(w.waterMl, 0, 'ml')}</div>
         <div class="m"><span>熱量</span>${stat(w.kcal, 0, 'kcal')}</div>
-        <div class="m"><span>Firestore 體重筆數</span><strong>${w.reportedDays} / 7 天</strong><em>Firestore 每日體重；正式週報可能另有完整紀錄</em></div>
+        <div class="m"><span>已匯入每日體重筆數</span><strong>${w.reportedDays} / 7 天</strong><em>已匯入的每日體重（含歷史補錄）；未匯入日資料時以正式週報為準</em></div>
       </div>
       ${strip}
       <div class="prose">
@@ -656,10 +656,10 @@ document.querySelector('#historyImportBtn').onclick=async()=>{
   if(rows.length!==8||new Set(rows.map(historyWeekNo)).size!==8)throw Error('需要完整且不重複的 Week 7～14 八週摘要');
   const message=rows.map(x=>{const n=historyWeekNo(x);return 'W'+n+': '+(x.nutritionStatus||'無營養摘要')}).join('\n');
   if(!confirm('將 8 週歷史摘要寫入私人 Firestore 的 weeklyHistorical 集合，不覆蓋既有 weeks、daily。\n\n'+message+'\n\n確定匯入？')){status.textContent='已取消';return}
-  for(const x of rows){const n=historyWeekNo(x);await setDoc(doc(db,'users',activeUser.uid,'weeklyHistorical','W'+String(n).padStart(2,'0')),{...x,week:n,source:'user-verified-historical-json',importedAt:new Date().toISOString()})}
+  for(const x of rows){const n=historyWeekNo(x);const historicalDaily=(Array.isArray(payload.daily)?payload.daily:[]).filter(d=>/^\d{4}-\d\d-\d\d$/.test(d.date||'')&&weekNo(d.date)===n);await setDoc(doc(db,'users',activeUser.uid,'weeklyHistorical','W'+String(n).padStart(2,'0')),{...x,week:n,historicalDaily,source:'user-verified-historical-json',importedAt:new Date().toISOString()})}
   status.textContent='已寫入 8 週私人歷史摘要，正在重新載入並核對。';
   await loadRealData(activeUser);
-  const matched=DATA.weeks.filter(w=>w.week>=7&&w.week<=14);const count=matched.filter(w=>w.kcal?.historical||w.kcal?.n).length;status.textContent='匯入完成：8 週摘要已寫入；'+count+'/8 週有可顯示的熱量定量資料，其餘僅有文字或缺漏。請逐週查看來源說明。';
+  const matched=DATA.weeks.filter(w=>w.week>=7&&w.week<=14);const count=matched.filter(w=>w.kcal?.historical||w.kcal?.n).length;status.textContent='匯入完成：8 週摘要與歷史每日資料已寫入；'+count+'/8 週有可顯示的熱量定量資料，其餘僅有文字或缺漏。請逐週查看來源說明。';
  }catch(e){status.textContent='匯入失敗：'+(e.code||e.message)}
  finally{btn.disabled=false}
 };
@@ -669,6 +669,11 @@ async function loadRealData(user){
  const snaps=await Promise.all(names.map(n=>getDocs(collection(db,'users',user.uid,n))));
  const all=Object.fromEntries(names.map((n,i)=>[n,snaps[i].docs.map(d=>({id:d.id,...d.data()}))]));
  DATA.daily.splice(0,DATA.daily.length,...all.daily.filter(x=>/^\d{4}-\d\d-\d\d$/.test(x.date||x.id)).map(x=>({date:x.date||x.id,weightKg:numeric(x,'weightKg'),sleepH:numeric(x,'sleepHours','sleepH'),waterMl:numeric(x,'waterMl'),proteinG:numeric(x,'proteinG'),notes:x.notes||'',estimated:[]})).sort((a,b)=>a.date.localeCompare(b.date)));
+ // 歷史日資料與即時 daily 分離保存，缺筆才補顯示，不覆蓋當前資料庫。
+ const historicalDaily=all.weeklyHistorical.flatMap(h=>Array.isArray(h.historicalDaily)?h.historicalDaily:[]);
+ const existingDates=new Set(DATA.daily.map(d=>d.date));
+ const restored=historicalDaily.filter(d=>/^\\d{4}-\\d\\d-\\d\\d$/.test(d.date||'')&&!existingDates.has(d.date)).map(d=>({date:d.date,weightKg:numeric(d,'weightKg'),sleepH:numeric(d,'sleepHours','sleepH'),waterMl:numeric(d,'waterMl'),proteinG:numeric(d,'proteinG'),notes:d.notes||'',historical:true,estimated:[]}));
+ DATA.daily.push(...restored);DATA.daily.sort((a,b)=>a.date.localeCompare(b.date));
  const normalized=all.weeks.map(normalizeWeek).filter(Boolean);
  const historical=Object.fromEntries(all.weeklyHistorical.map(x=>[historyWeekNo(x),x]).filter(([n])=>n>=7&&n<=14));
  for(const w of normalized)applyHistory(w,historical[w.week]);
