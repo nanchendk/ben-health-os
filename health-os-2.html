@@ -514,7 +514,7 @@ function renderTrend() {
       <div class="prose">
         <h3>判讀</h3>
         <p class="${w.note ? '' : 'muted'}">${w.note ? esc(w.note) : '這週還沒有判讀文字，週日結案時補上。'}</p>
-        <h3>營養資料來源與完整性</h3><p class="small muted">${esc(w.historicalNutritionNote||'目前沒有已核對的歷史營養摘要；未回報不等於未進食。')}</p><p class="small muted">${w.historicalSource?'來源：'+esc(w.historicalSource)+'；':'資料來源：Firestore；'}估算值不作為每日實測數值。</p>
+        <h3>歷史資料對帳</h3><p class="small muted">${w.weightKg.historicalOfficial?'體重採正式結案週平均；Firestore 目前 '+w.reportedDays+' 天每日體重。':'體重採 Firestore 週資料；每日體重 '+w.reportedDays+' 天。'}${w.week===12?' 疾病前代表體重 '+(w.preIllnessAverageWeightKg??'89.25')+' kg，疾病與脫水期間體重不作減脂判斷。':''}</p><p class="small muted">${esc(w.exerciseStatus||'運動沒有可靠完成紀錄，不以 0 次視為未運動。')} ${esc(w.waterStatus||'飲水無完整可靠週平均。')}</p><h3>營養資料來源與完整性</h3><p class="small muted">${esc(w.historicalNutritionNote||'目前沒有已核對的歷史營養摘要；未回報不等於未進食。')}</p><p class="small muted">${w.historicalSource?'來源：'+esc(w.historicalSource)+'；':'資料來源：Firestore；'}估算值不作為每日實測數值。</p>
         <h3>下週策略</h3>
         <p class="${w.strategy ? '' : 'muted'}">${w.strategy ? esc(w.strategy) : '這週還沒有下週策略。'}</p>
       </div>
@@ -605,7 +605,7 @@ function normalizeWeek(r){
  const raw=String(r.week??r.id??''); const hit=raw.match(/(?:^|[^0-9])W(?:eek)?\s*0?(\d{1,2})(?!\d)/i)||raw.match(/^\s*(\d{1,2})\s*$/); const week=hit?Number(hit[1]):null;
  const avg=numeric(r,'averageWeightKg','avgWeightKg')??numeric(r.weightKg,'avg');
  if(!week||week>53||avg===undefined)return null;
- const n=numeric(r,'weightDays','reportedDays')??r.weightKg?.n??0;
+ const n=numeric(r,'weightDays','reportedDays','validWeightDays')??r.weightKg?.n??0;
  const interference=Array.isArray(r.interference)?r.interference:(week===12?['illness','dehydration']:week===13?['illness']:[]);
  return {week,status:r.status==='open'?'open':(r.status==='closed'||week<=14?'closed':'open'),reportedDays:n,weightKg:{avg,n},proteinG:{avg:numeric(r,'averageProteinG'),n:0},proteinTargetHitDays:0,proteinReportedDays:0,trainingDays:0,trainingReportedDays:0,sleepH:{avg:undefined,n:0},waterMl:{avg:undefined,n:0},kcal:{avg:undefined,n:0},interference,excludeFromFatLoss:week===12||week===13||r.excludeFromFatLoss===true,note:r.notes||r.note||'',strategy:r.strategy||''}
 }
@@ -634,6 +634,9 @@ function applyHistory(w,h){
  w.historicalNutritionNote=note||'歷史摘要未提供可核對的七日營養平均；不代表當週沒有飲食紀錄。';
  w.historicalSource='歷史匯入 JSON';
  if(!w.strategy&&h.exerciseStatus)w.exerciseStatus=h.exerciseStatus;
+ if(h.exerciseStatus)w.exerciseStatus=h.exerciseStatus;
+ if(h.waterStatus)w.waterStatus=h.waterStatus;
+ if(h.preIllnessAverageWeightKg)w.preIllnessAverageWeightKg=h.preIllnessAverageWeightKg;
  if(!w.weightKg?.n&&typeof h.validWeightDays==='number')w.weightKg.n=h.validWeightDays;
  if(!w.reportedDays&&typeof h.validWeightDays==='number')w.reportedDays=h.validWeightDays;
  if(h.averageWeightKg!=null&&typeof h.averageWeightKg==='number'){w.weightKg.avg=h.averageWeightKg;w.weightKg.historicalOfficial=true;}
@@ -667,13 +670,13 @@ async function loadRealData(user){
  const all=Object.fromEntries(names.map((n,i)=>[n,snaps[i].docs.map(d=>({id:d.id,...d.data()}))]));
  DATA.daily.splice(0,DATA.daily.length,...all.daily.filter(x=>/^\d{4}-\d\d-\d\d$/.test(x.date||x.id)).map(x=>({date:x.date||x.id,weightKg:numeric(x,'weightKg'),sleepH:numeric(x,'sleepHours','sleepH'),waterMl:numeric(x,'waterMl'),proteinG:numeric(x,'proteinG'),notes:x.notes||'',estimated:[]})).sort((a,b)=>a.date.localeCompare(b.date)));
  const normalized=all.weeks.map(normalizeWeek).filter(Boolean);
- const historical=Object.fromEntries(all.weeklyHistorical.map(x=>[Number(String(x.id).match(/W(\d+)/i)?.[1]),x]));
+ const historical=Object.fromEntries(all.weeklyHistorical.map(x=>[historyWeekNo(x),x]).filter(([n])=>n>=7&&n<=14));
  for(const w of normalized)applyHistory(w,historical[w.week]);
  for(const [n,h] of Object.entries(historical)){if(!normalized.some(w=>w.week===Number(n))){const w=normalizeWeek(h);if(w){applyHistory(w,h);normalized.push(w)}}}
  const hasWeek12=normalized.some(w=>w.week===12);
  if(!hasWeek12){const w12weights=DATA.daily.filter(d=>weekNo(d.date)===12&&typeof d.weightKg==='number');if(w12weights.length){normalized.push({week:12,status:'closed',reportedDays:w12weights.length,weightKg:{avg:w12weights.reduce((a,d)=>a+d.weightKg,0)/w12weights.length,n:w12weights.length},proteinG:{avg:undefined,n:0},proteinTargetHitDays:0,proteinReportedDays:0,trainingDays:0,trainingReportedDays:0,sleepH:{avg:undefined,n:0},waterMl:{avg:undefined,n:0},kcal:{avg:undefined,n:0},interference:['illness','dehydration'],excludeFromFatLoss:true,note:'疾病／脫水干擾；此週平均為可用晨重的重算值，尚未核對正式結案',strategy:''})}}
  const dailyForWeek=week=>DATA.daily.filter(d=>weekNo(d.date)===week&&typeof d.weightKg==='number');
- for(const w of normalized){const ds=dailyForWeek(w.week);w.weightKg.n=w.weightKg.historicalOfficial?(w.weightKg.n||ds.length):(ds.length||w.weightKg.n);w.reportedDays=ds.length||w.reportedDays;for(const [field,key] of [['sleepH','sleepH'],['waterMl','waterMl'],['proteinG','proteinG']]){const vals=DATA.daily.filter(d=>weekNo(d.date)===w.week&&typeof d[key]==='number').map(d=>d[key]);if(vals.length && !w[field]?.historical){w[field]={avg:vals.reduce((a,b)=>a+b,0)/vals.length,n:vals.length}}}}
+ for(const w of normalized){const ds=dailyForWeek(w.week);w.weightKg.n=w.weightKg.historicalOfficial?(w.weightKg.n||ds.length):(ds.length||w.weightKg.n);w.reportedDays=ds.length;w.officialWeightDays=w.weightKg.historicalOfficial?(w.weightKg.n||0):null;for(const [field,key] of [['sleepH','sleepH'],['waterMl','waterMl'],['proteinG','proteinG']]){const vals=DATA.daily.filter(d=>weekNo(d.date)===w.week&&typeof d[key]==='number').map(d=>d[key]);if(vals.length && !w[field]?.historical){w[field]={avg:vals.reduce((a,b)=>a+b,0)/vals.length,n:vals.length}}}}
  DATA.weeks.splice(0,DATA.weeks.length,...normalized.sort((a,b)=>a.week-b.week));
  for(const k of Object.keys(byWeek))delete byWeek[k];
  DATA.weeks.forEach(w=>byWeek[w.week]=w);
