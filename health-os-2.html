@@ -655,7 +655,7 @@ function applyHistory(w,h){
  if(protein&&!w.proteinG?.n)w.proteinG=protein;
  if(w.week===14&&!w.kcal?.n&&!w.kcal?.historical){
  w.kcal={avg:1575,n:0,historical:true,rangeText:'約 1220–1930 kcal/有紀錄日',sourceLabel:'六日有記錄餐點估算，非完整七日平均'};
- w.proteinG={avg:73.5,n:0,historical:true,rangeText:'約 53–94 g/有紀錄日',sourceLabel:'六日有記錄餐點估算，非完整七日平均'};
+ if(!w.proteinG?.n&&!w.proteinG?.historical)w.proteinG={avg:73.5,n:0,historical:true,rangeText:'約 53–94 g/有紀錄日',sourceLabel:'六日有記錄餐點估算，非完整七日平均'};
  w.nutritionStatus='W14 六日已記錄餐點估算；10/16 聚餐記帳假設排除，10/18 餐次不完整。';
  }
  if(!w.kcal?.n&&!w.kcal?.historical&&typeof h.averageEnergyKcalEstimate==='number')w.kcal={avg:h.averageEnergyKcalEstimate,n:0,historical:true,rangeText:h.averageEnergyKcalEstimate+' kcal/日',sourceLabel:'疾病期估算'};
@@ -665,6 +665,7 @@ function applyHistory(w,h){
  w.nutritionStatus=h.nutritionStatus||w.nutritionStatus||'';
  if(!w.note&&typeof h.status==='string'&&h.status!=='open'&&h.status!=='closed')w.note=h.status;
  w.historicalNutritionNote=note||'歷史摘要未提供可核對的七日營養平均；不代表當週沒有飲食紀錄。';
+ if(w.week===14&&w.kcal?.historical)w.historicalNutritionNote='根據10/12～10/15及10/17～10/18有記錄的餐點份量進行區間估算；10/16聚餐熱量屬記帳假設、未採用；10/18有未入鏡餐點。所示為六日已記錄餐點估算，不能當成完整七日攝取平均。';
  // W13/W14 原始歷史檔含逐日餐點文字，但多日未確認全部餐次與份量。
  // 不將「有餐點」誤算成完整七日攝取平均；直接顯示可核對的逐日紀錄覆蓋。
  if((w.week===13||w.week===14)&&!w.kcal?.historical&&!w.kcal?.n){
