@@ -454,7 +454,7 @@ function renderTrend() {
   const T = DATA.config.targets;
   const start = weekStart(w.week), end = addDays(start, 6);
   const dailyMap = Object.fromEntries(DATA.daily.map((d) => [d.date, d]));
-  const hasDaily = DATA.daily.some((d) => weekNo(d.date) === w.week);
+  const hasDaily = DATA.daily.some((d) => weekNo(d.date) === w.week) || w.weightKg.historicalOfficial;
   const vs = w.vsPrevWeek
     ? (w.vsPrevWeek.comparable ? `<strong>${signed(w.vsPrevWeek.deltaKg, 2)} kg</strong><em>與第 ${w.week - 1} 週相比</em>` : `<strong>不比較</strong><em>${byWeek[w.week].excludeFromFatLoss ? '本週為干擾週' : `第 ${w.week - 1} 週為干擾週`}</em>`)
     : '<strong>—</strong><em>沒有前一週資料</em>';
@@ -504,7 +504,7 @@ function renderTrend() {
         <div class="m"><span>平均體重</span>${w.weightKg.n ? `<strong>${fmt(w.weightKg.avg, 2)} kg</strong><em>${w.weightKg.historicalOfficial?'正式結案值；目前 Firestore '+w.reportedDays+' 天每日體重':'Firestore '+w.weightKg.n+' 天有紀錄'}</em>` : '<strong class="muted">未回報</strong>'}</div>
         <div class="m"><span>週變化</span>${vs}</div>
         <div class="m"><span>蛋白質</span>${w.proteinG.historical ? `<strong>${esc(w.proteinG.rangeText)}</strong><em>歷史營養估算，非每日實測</em>` : w.proteinG.n ? `<strong>${w.proteinTargetHitDays} / ${w.proteinReportedDays} 天達標</strong><em>日均 ${fmt(w.proteinG.avg, 0)} g${w.proteinG.includesEstimate ? '，含估算' : ''}</em>` : '<strong class="muted">無可靠週平均</strong><em>不能據此認定當週未攝取蛋白質</em>'}</div>
-        <div class="m"><span>重訓</span><strong>${w.trainingReportedDays?w.trainingDays+' / '+T.trainingPerWeek+' 次':'未有完整運動統計'}</strong><em>${w.trainingReportedDays?w.trainingReportedDays+' 天有紀錄':esc(w.exerciseStatus||'未建立可驗證的運動次數')}</em></div>
+        <div class="m"><span>重訓</span><strong>${w.trainingHistorical?'0 次（歷史正式紀錄）':w.trainingReportedDays?w.trainingDays+' / '+T.trainingPerWeek+' 次':'無可靠週統計'}</strong><em>${w.trainingHistorical?esc(w.exerciseStatus):w.trainingReportedDays?w.trainingReportedDays+' 天有紀錄':esc(w.exerciseStatus||'未建立可驗證的運動次數')}</em></div>
         <div class="m"><span>睡眠</span>${stat(w.sleepH, 1, '小時')}</div>
         <div class="m"><span>飲水</span>${stat(w.waterMl, 0, 'ml')}</div>
         <div class="m"><span>熱量</span>${stat(w.kcal, 0, 'kcal')}</div>
@@ -628,13 +628,13 @@ function applyHistory(w,h){
  if(!w.kcal?.n&&!w.kcal?.historical&&typeof h.averageEnergyKcalEstimate==='number')w.kcal={avg:h.averageEnergyKcalEstimate,n:0,historical:true,rangeText:h.averageEnergyKcalEstimate+' kcal/日',sourceLabel:'疾病期估算'};
  if(!w.proteinG?.n&&!w.proteinG?.historical&&typeof h.averageProteinGEstimate==='number')w.proteinG={avg:h.averageProteinGEstimate,n:0,historical:true,rangeText:h.averageProteinGEstimate+' g/日',sourceLabel:'疾病期估算'};
  // 僅當週摘要明確提供平均值時才顯示，不將缺漏補零
- if(!w.sleepH?.n&&typeof h.averageSleepHoursEstimate==='number')w.sleepH={avg:h.averageSleepHoursEstimate,n:h.validSleepDays||0,historical:true,rangeText:h.averageSleepHoursEstimate.toFixed(2)+' 小時',sourceLabel:'歷史週報'};
+ 
  w.nutritionStatus=h.nutritionStatus||w.nutritionStatus||'';
  if(!w.note&&typeof h.status==='string'&&h.status!=='open'&&h.status!=='closed')w.note=h.status;
  w.historicalNutritionNote=note||'歷史摘要未提供可核對的七日營養平均；不代表當週沒有飲食紀錄。';
  w.historicalSource='歷史匯入 JSON';
  if(!w.strategy&&h.exerciseStatus)w.exerciseStatus=h.exerciseStatus;
- if(h.exerciseStatus)w.exerciseStatus=h.exerciseStatus;
+ if(h.exerciseStatus){w.exerciseStatus=h.exerciseStatus;if(/(?:正式阻力訓練|阻力訓練)\s*0\s*次/.test(h.exerciseStatus)){w.trainingDays=0;w.trainingReportedDays=7;w.trainingHistorical=true;}}
  if(h.waterStatus)w.waterStatus=h.waterStatus;
  if(h.preIllnessAverageWeightKg)w.preIllnessAverageWeightKg=h.preIllnessAverageWeightKg;
  if(!w.weightKg?.n&&typeof h.validWeightDays==='number')w.weightKg.n=h.validWeightDays;
