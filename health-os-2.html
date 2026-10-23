@@ -447,9 +447,10 @@ function renderWeek() {
 }
 
 /* ---------------- 趨勢與週報 ---------------- */
-let selectedWeek = current.week;
+let selectedWeek = null;
 function renderTrend() {
   const w = byWeek[selectedWeek];
+  if (!w) { $('#v-trend').innerHTML='<section class="panel"><h2>尚無可顯示的週報</h2></section>'; return; }
   const T = DATA.config.targets;
   const start = weekStart(w.week), end = addDays(start, 6);
   const dailyMap = Object.fromEntries(DATA.daily.map((d) => [d.date, d]));
@@ -623,7 +624,7 @@ async function loadRealData(user){
  DATA.lastSync.finishedAt=new Date().toISOString();
  DATA.lastSync.readBack.expected=all.daily.length+all.weeks.length+all.bodyComposition.length+all.labs.length;
  DATA.lastSync.readBack.matched=DATA.lastSync.readBack.expected;
- if(!current)throw Error('Firestore 尚無可顯示的週報資料');
+ if(!current){document.querySelector('#v-week').innerHTML='<section class="panel"><h2>尚無週報</h2><p>Firestore 尚無可用的週報資料，請先核對資料匯入狀態。</p></section>';renderSync();renderMedicalLocked();route();return;}
  selectedWeek=current.week;renderSync();renderWeek();renderTrend();renderBody();renderMedicalLocked();route();
 }
 onAuthStateChanged(auth,async user=>{
