@@ -458,12 +458,12 @@ function renderTrend() {
   const vs = w.vsPrevWeek
     ? (w.vsPrevWeek.comparable ? `<strong>${signed(w.vsPrevWeek.deltaKg, 2)} kg</strong><em>與第 ${w.week - 1} 週相比</em>` : `<strong>不比較</strong><em>${byWeek[w.week].excludeFromFatLoss ? '本週為干擾週' : `第 ${w.week - 1} 週為干擾週`}</em>`)
     : '<strong>—</strong><em>沒有前一週資料</em>';
-  const stat = (o, d, unit) => (o?.historical ? `<strong>${esc(o.rangeText||fmt(o.avg,d)+' '+unit)}</strong><em>歷史結案估算${o.sourceLabel?' · '+esc(o.sourceLabel):''}</em>` : o.n ? `<strong>${fmt(o.avg, d)} ${unit}</strong><em>${o.n} 天有紀錄${o.includesEstimate ? '，含估算' : ''}</em>` : '<strong class="muted">未回報</strong><em>這週沒有紀錄</em>');
+  const stat = (o, d, unit) => (o?.historical ? `<strong>${esc(o.rangeText||fmt(o.avg,d)+' '+unit)}</strong><em>歷史結案估算${o.sourceLabel?' · '+esc(o.sourceLabel):''}</em>` : o.n ? `<strong>${fmt(o.avg, d)} ${unit}</strong><em>${o.n} 天有紀錄${o.includesEstimate ? '，含估算' : ''}</em>` : '<strong class="muted">無可靠週平均</strong><em>已有歷史紀錄時仍須核對完整七日資料</em>');
 
   const strip = hasDaily ? `<h3 class="small muted" style="margin:18px 0 8px">每日體重</h3><div class="strip">${Array.from({ length: 7 }, (_, i) => {
     const d = addDays(start, i), x = dailyMap[d];
     if (d > dataThrough) return `<div class="cell future">${wd(d)}<b>未到</b></div>`;
-    if (typeof x?.weightKg !== 'number') return `<div class="cell none">${wd(d)}<b>未回報</b></div>`;
+    if (typeof x?.weightKg !== 'number') return `<div class="cell none">${wd(d)}<b>${w.weightKg.historicalOfficial?'資料庫缺筆':'未有紀錄'}</b></div>`;
     return `<div class="cell">${wd(d)}<b>${fmt(x.weightKg)}</b></div>`;
   }).join('')}</div>` : '';
 
@@ -503,12 +503,12 @@ function renderTrend() {
       <div class="mgrid">
         <div class="m"><span>平均體重</span>${w.weightKg.n ? `<strong>${fmt(w.weightKg.avg, 2)} kg</strong><em>${w.weightKg.historicalOfficial?'正式結案值；目前 Firestore '+w.reportedDays+' 天每日體重':'Firestore '+w.weightKg.n+' 天有紀錄'}</em>` : '<strong class="muted">未回報</strong>'}</div>
         <div class="m"><span>週變化</span>${vs}</div>
-        <div class="m"><span>蛋白質</span>${w.proteinG.historical ? `<strong>${esc(w.proteinG.rangeText)}</strong><em>歷史營養估算，非每日實測</em>` : w.proteinG.n ? `<strong>${w.proteinTargetHitDays} / ${w.proteinReportedDays} 天達標</strong><em>日均 ${fmt(w.proteinG.avg, 0)} g${w.proteinG.includesEstimate ? '，含估算' : ''}</em>` : '<strong class="muted">未回報</strong>'}</div>
-        <div class="m"><span>重訓</span><strong>${w.trainingReportedDays?w.trainingDays+' / '+T.trainingPerWeek+' 次':'未回報'}</strong><em>${w.trainingReportedDays+' 天有紀錄'}</em></div>
+        <div class="m"><span>蛋白質</span>${w.proteinG.historical ? `<strong>${esc(w.proteinG.rangeText)}</strong><em>歷史營養估算，非每日實測</em>` : w.proteinG.n ? `<strong>${w.proteinTargetHitDays} / ${w.proteinReportedDays} 天達標</strong><em>日均 ${fmt(w.proteinG.avg, 0)} g${w.proteinG.includesEstimate ? '，含估算' : ''}</em>` : '<strong class="muted">無可靠週平均</strong><em>不能據此認定當週未攝取蛋白質</em>'}</div>
+        <div class="m"><span>重訓</span><strong>${w.trainingReportedDays?w.trainingDays+' / '+T.trainingPerWeek+' 次':'未有完整運動統計'}</strong><em>${w.trainingReportedDays?w.trainingReportedDays+' 天有紀錄':esc(w.exerciseStatus||'未建立可驗證的運動次數')}</em></div>
         <div class="m"><span>睡眠</span>${stat(w.sleepH, 1, '小時')}</div>
         <div class="m"><span>飲水</span>${stat(w.waterMl, 0, 'ml')}</div>
         <div class="m"><span>熱量</span>${stat(w.kcal, 0, 'kcal')}</div>
-        <div class="m"><span>紀錄天數</span><strong>${w.reportedDays} / 7 天</strong><em>Firestore 每日體重；正式週報可能另有完整紀錄</em></div>
+        <div class="m"><span>Firestore 體重筆數</span><strong>${w.reportedDays} / 7 天</strong><em>Firestore 每日體重；正式週報可能另有完整紀錄</em></div>
       </div>
       ${strip}
       <div class="prose">
