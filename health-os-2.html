@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Ben Health OS 2.0｜私人健康報告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#fcfcfa; --surface:#f2f3f0; --card:#ffffff; --ink:#15202b; --muted:#4e5a66; --faint:#6b7783;
+  --rule:#d5d9dd; --track:#e3e6e2; --blue:#304a67; --orange:#9a4512; --orange-line:#b5541c;
+  --good:#1f5c3e; --shade:#ebece8; --hero:#15202b; --hero-ink:#ffffff; --hero-muted:#c3ccd5; --hero-line:#3a4a5b;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#12171c; --surface:#1a2027; --card:#1e252d; --ink:#e8edf1; --muted:#a9b4bf; --faint:#8f9aa5;
+    --rule:#343e48; --track:#2c353f; --blue:#8fb0d3; --orange:#f0a16c; --orange-line:#e08a52;
+    --good:#7fcf9f; --shade:#232b33; --hero:#26364a; --hero-ink:#ffffff; --hero-muted:#c3ccd5; --hero-line:#41556c;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#12171c; --surface:#1a2027; --card:#1e252d; --ink:#e8edf1; --muted:#a9b4bf; --faint:#8f9aa5;
+  --rule:#343e48; --track:#2c353f; --blue:#8fb0d3; --orange:#f0a16c; --orange-line:#e08a52;
+  --good:#7fcf9f; --shade:#232b33; --hero:#26364a; --hero-ink:#ffffff; --hero-muted:#c3ccd5; --hero-line:#41556c;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;font-size:16px;line-height:1.6;font-variant-numeric:tabular-nums;-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
+button,input{font:inherit;color:inherit}
+a{color:var(--blue)}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px;border-radius:6px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);border-bottom:1px solid var(--rule)}
+.top .wrap{display:flex;align-items:center;gap:16px;min-height:64px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;margin-right:auto}
+.mark{width:32px;height:32px;border-radius:8px;background:var(--ink);color:var(--paper);display:grid;place-items:center}
+.tabs{display:flex;gap:4px}
+.tabs a{min-height:44px;padding:0 14px;display:inline-flex;align-items:center;gap:8px;border-radius:8px;text-decoration:none;color:var(--muted);font-weight:500;font-size:15px}
+.tabs a[aria-current="page"]{background:var(--surface);color:var(--ink);font-weight:700}
+.sync{position:relative}
+.sync>button{min-height:40px;padding:0 12px;border-radius:20px;border:1px solid var(--rule);background:var(--card);display:inline-flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+.dot{width:8px;height:8px;border-radius:4px;background:var(--good);flex:none}
+.dot.warn{background:var(--orange-line)}
+.pop{position:absolute;right:0;top:calc(100% + 8px);width:min(340px,calc(100vw - 32px));background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:16px;box-shadow:0 12px 32px rgba(0,0,0,.12);font-size:14px}
+.pop[hidden]{display:none}
+.pop h3{margin:0 0 8px;font-size:15px}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--rule)}
+.kv:last-child{border:0}
+.kv span:first-child{color:var(--muted)}
+.proto{font-size:12px;color:var(--muted);border:1px dashed var(--rule);border-radius:6px;padding:2px 8px}
+
+/* bottom nav (mobile) */
+.bottom{display:none}
+@media (max-width:760px){
+  .tabs{display:none}
+  .proto{display:none}
+  .bottom{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--paper);border-top:1px solid var(--rule);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
+  .bottom a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:52px;text-decoration:none;color:var(--muted);font-size:12px;font-weight:500}
+  .bottom a[aria-current="page"]{color:var(--ink);font-weight:700}
+  main{padding-bottom:96px}
+}
+
+main{padding-top:28px;padding-bottom:64px}
+.view[hidden]{display:none}
+h1{font-size:clamp(26px,4vw,34px);line-height:1.2;margin:0;font-weight:900;letter-spacing:-.01em}
+h2{font-size:18px;margin:0 0 12px;line-height:1.35}
+.sub{color:var(--muted);margin:6px 0 0;font-size:15px}
+.stack{display:flex;flex-direction:column;gap:20px}
+.panel{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:20px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;padding:2px 8px;border-radius:6px;border:1px solid var(--rule);color:var(--muted);white-space:nowrap}
+.badge.ok{border-color:var(--good);color:var(--good)}
+.badge.todo{border-style:dashed;border-color:var(--orange-line);color:var(--orange)}
+.badge.ill{background:var(--shade);border-color:var(--shade);color:var(--ink)}
+.badge.est{border-style:dotted}
+
+/* hero */
+.hero{background:var(--hero);color:var(--hero-ink);border-radius:18px;padding:24px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:28px;align-items:end}
+@media (max-width:760px){.hero{grid-template-columns:1fr;gap:22px;padding:20px}}
+.hero .lbl{color:var(--hero-muted);font-size:14px}
+.big{font-size:clamp(52px,9vw,76px);font-weight:900;line-height:.95;letter-spacing:-.03em}
+.big small{font-size:.32em;font-weight:500;letter-spacing:0;margin-left:6px}
+.delta{font-size:16px;font-weight:500;margin-top:10px;color:var(--hero-muted)}
+.delta strong{color:var(--hero-ink)}
+.ruler svg{width:100%;height:auto;display:block}
+.ruler .cap{display:flex;justify-content:space-between;font-size:13px;color:var(--hero-muted);margin-top:6px}
+
+/* goals */
+.goals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media (max-width:900px){.goals{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.goal{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.goal .t{font-size:14px;color:var(--muted)}
+.goal .v{font-size:28px;font-weight:700;line-height:1.1}
+.goal .v small{font-size:14px;font-weight:500;color:var(--muted)}
+.goal .f{font-size:13px;color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--track);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--blue)}
+.segs{display:grid;gap:4px}
+.segs i{height:6px;border-radius:3px;background:var(--track)}
+.segs i.on{background:var(--blue)}
+.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center;font-size:12px;color:var(--muted)}
+.days span{display:flex;flex-direction:column;align-items:center;gap:4px}
+.days b{width:14px;height:14px;border-radius:7px;border:1.5px solid var(--faint);display:block}
+.days b.on{background:var(--ink);border-color:var(--ink)}
+.days b.future{border-style:dotted;border-color:var(--rule)}
+
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
+@media (max-width:860px){.split{grid-template-columns:1fr}}
+.notes{list-style:none;margin:0;padding:0}
+.notes li{padding:12px 0;border-bottom:1px solid var(--rule);display:flex;flex-direction:column;gap:2px}
+.notes li:last-child{border:0}
+.notes .why{font-size:13px;color:var(--muted)}
+
+/* charts */
+.chart svg{width:100%;height:auto;display:block;overflow:visible}
+.chart text{font-family:inherit;fill:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--muted);margin-top:8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:18px;height:3px;background:var(--ink);display:inline-block}
+.sw.dash{background:none;border-top:2.5px dashed var(--faint);height:0}
+.sw.box{width:14px;height:14px;background:var(--shade);border-radius:3px}
+.linkbtn{background:none;border:0;padding:0;min-height:44px;color:var(--blue);font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+/* weeks */
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.chip{flex:none;min-height:44px;padding:0 14px;border-radius:22px;border:1px solid var(--rule);background:var(--card);cursor:pointer;font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.chip .x{width:7px;height:7px;border-radius:4px;background:var(--orange-line)}
+.mgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:760px){.mgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.m{display:flex;flex-direction:column;gap:2px;padding:12px;border-radius:10px;background:var(--surface);min-width:0}
+.m span{font-size:13px;color:var(--muted)}
+.m strong{font-size:20px;line-height:1.3}
+.m em{font-style:normal;font-size:12px;color:var(--muted)}
+.prose{max-width:68ch}
+.prose h3{font-size:15px;margin:16px 0 4px}
+.prose p{margin:0}
+.strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.cell{border:1px solid var(--rule);border-radius:8px;padding:8px 6px;text-align:center;font-size:13px;min-width:0}
+.cell b{display:block;font-size:15px}
+.cell.none{border-style:dashed;color:var(--faint)}
+.cell.future{background:transparent;border-style:dotted;color:var(--faint)}
+
+/* tables */
+.tbl{overflow-x:auto;border:1px solid var(--rule);border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
+th,td{padding:11px 14px;text-align:left;border-top:1px solid var(--rule);vertical-align:top}
+thead th{border-top:0;background:var(--surface);color:var(--muted);font-weight:500;white-space:nowrap}
+td.num,th.num{text-align:right}
+.flag{font-weight:700;color:var(--orange)}
+.pending{color:var(--faint)}
+.pending b{font-weight:500;border-bottom:1.5px dashed var(--orange-line)}
+
+/* medical lock */
+.lock{max-width:460px;margin:24px auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
+.lock .ic{width:64px;height:64px;border-radius:16px;background:var(--surface);display:grid;place-items:center}
+.lock form{width:100%;display:flex;flex-direction:column;gap:10px;text-align:left}
+.lock label{font-size:14px;color:var(--muted)}
+.lock input{min-height:52px;border:1px solid var(--faint);border-radius:10px;padding:0 14px;background:var(--card);font-size:17px}
+.primary{min-height:52px;border:0;border-radius:10px;background:var(--ink);color:var(--paper);font-weight:700;cursor:pointer;font-size:16px}
+.ghost{min-height:40px;padding:0 14px;border-radius:20px;border:1px solid var(--rule);background:var(--card);cursor:pointer;font-size:14px}
+.err{color:var(--orange);font-size:14px;min-height:1.6em;margin:0}
+.unlockbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.demo{border:1px dashed var(--orange-line);color:var(--orange);border-radius:10px;padding:10px 14px;font-size:14px}
+@media (prefers-reduced-motion:no-preference){
+  .view{animation:in .18s ease-out}
+  @keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg></span>
+      Ben Health OS
+    </div>
+    <nav class="tabs" aria-label="主要分頁" id="tabs"></nav>
+    <span class="proto">Firestore 正式資料</span>
+    <div class="sync">
+      <button type="button" id="syncBtn" aria-expanded="false" aria-controls="syncPop"><span class="dot" id="syncDot"></span><span id="syncLabel"></span></button>
+      <div class="pop" id="syncPop" hidden></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="view" id="v-week" aria-labelledby="h-week"></section>
+  <section class="view" id="v-trend" aria-labelledby="h-trend" hidden></section>
+  <section class="view" id="v-body" aria-labelledby="h-body" hidden></section>
+  <section class="view" id="v-medical" aria-labelledby="h-medical" hidden></section>
+</main>
+
+<nav class="bottom" aria-label="主要分頁" id="bottom"></nav>
+
+<script type="module">
+/* ------------------------------------------------------------------
+   示意資料。欄位名稱與 ben-health-data 同步到 Firestore 的格式一致：
+   users/{uid}/weeks/W{n}、daily/{date}、bodyComposition/{id}、
+   medical/{id}（加密）、meta/lastSync。正式版把 DATA 換成 Firestore 讀取即可。
+------------------------------------------------------------------- */
+const DATA = {
+ today: new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Taipei'}),
+ config:{week1Start:'2026-07-13',targetWeightKg:80,targets:{proteinMinG:120,proteinMaxG:150,trainingPerWeek:3}},
+ lastSync:{finishedAt:null,commit:'Firestore',counts:{created:0,updated:0},readBack:{expected:0,matched:0}},
+ weeks:[],daily:[],bodyComposition:[],medicalIndex:[]
+};
+const MEDICAL_DEMO = null;
+
+/* ---------------- 工具 ---------------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const DAY = 86400000;
+const toUtc = (d) => { const [y, m, dd] = d.split('-').map(Number); return Date.UTC(y, m - 1, dd); };
+const addDays = (d, n) => new Date(toUtc(d) + n * DAY).toISOString().slice(0, 10);
+const WD = ['日', '一', '二', '三', '四', '五', '六'];
+const wd = (d) => WD[new Date(toUtc(d)).getUTCDay()];
+const md = (d) => `${+d.slice(5, 7)}/${+d.slice(8, 10)}`;
+const ymd = (d) => d.replaceAll('-', '/');
+const weekStart = (n) => addDays(DATA.config.week1Start, (n - 1) * 7);
+const weekNo = (d) => Math.floor((toUtc(d) - toUtc(DATA.config.week1Start)) / (7 * DAY)) + 1;
+const fmt = (x, d = 1) => (x === undefined || x === null ? '—' : Number(x).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }));
+const signed = (x, d = 1) => (x > 0 ? '+' : x < 0 ? '−' : '±') + fmt(Math.abs(x), d);
+const INTERF = { illness: '疾病', dehydration: '脫水', travel: '旅行', other: '其他干擾' };
+
+const weeks = DATA.weeks;
+const byWeek = {};
+let current = null;
+let dataThrough = '';
+
+/* ---------------- 導覽與路由 ---------------- */
+const ICONS = {
+  week: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 2.5v4M16 2.5v4"/></svg>',
+  trend: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18"/><path d="M4 15l5-5 4 3 7-7"/></svg>',
+  body: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="5" r="2.5"/><path d="M6 10h12M12 10v5M9 21l3-6 3 6"/></svg>',
+  medical: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>'
+};
+const ROUTES = [['week', '本週'], ['trend', '趨勢與週報'], ['body', '身體組成'], ['medical', '醫療']];
+const navHtml = (short) => ROUTES.map(([id, name]) => `<a href="#${id}" data-r="${id}">${ICONS[id]}<span>${short && id === 'trend' ? '趨勢' : name}</span></a>`).join('');
+$('#tabs').innerHTML = navHtml(false);
+$('#bottom').innerHTML = navHtml(true);
+
+function route() {
+  const id = (location.hash.slice(1) || 'week');
+  const r = ROUTES.some(([k]) => k === id) ? id : 'week';
+  ROUTES.forEach(([k]) => { $('#v-' + k).hidden = k !== r; });
+  document.querySelectorAll('[data-r]').forEach((a) => { if (a.dataset.r === r) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  if (r !== 'medical' && unlockTimer) lockMedical();
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', route);
+
+/* ---------------- 同步狀態 ---------------- */
+function renderSync() {
+  const s = DATA.lastSync;
+  const stale = !dataThrough || dataThrough < addDays(DATA.today, -2);
+  const okRead = s.readBack.matched === s.readBack.expected;
+  $('#syncDot').classList.toggle('warn', !okRead || stale);
+  $('#syncLabel').textContent = dataThrough ? `資料更新至 ${md(dataThrough)}（${wd(dataThrough)}）` : '尚無可用紀錄';
+  const t = s.finishedAt ? new Date(s.finishedAt) : new Date();
+  const local = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(t);
+  $('#syncPop').innerHTML = `
+    <h3>資料同步</h3>
+    <div class="kv"><span>最後同步</span><span>${local}</span></div>
+    <div class="kv"><span>讀回核對</span><span>${okRead ? '全部一致' : '有不一致'}（${s.readBack.matched} / ${s.readBack.expected}）</span></div>
+    <div class="kv"><span>本次變更</span><span>新增 ${s.counts.created}，更新 ${s.counts.updated}</span></div>
+    <div class="kv"><span>資料最後一天</span><span>${dataThrough ? ymd(dataThrough) + '（' + wd(dataThrough) + '）' : '未回報'}</span></div>
+    <div class="kv"><span>版本</span><span>${esc(s.commit)}</span></div>
+    <p class="small muted" style="margin:10px 0 0">${DATA.today > dataThrough ? `今天（${md(DATA.today)}）的資料還沒同步，預計 23:30 更新。` : '已包含今天的資料。'}</p>`;
+}
+$('#syncBtn').addEventListener('click', (e) => {
+  const pop = $('#syncPop');
+  pop.hidden = !pop.hidden;
+  e.currentTarget.setAttribute('aria-expanded', String(!pop.hidden));
+});
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.sync')) { $('#syncPop').hidden = true; $('#syncBtn').setAttribute('aria-expanded', 'false'); }
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#syncPop').hidden) { $('#syncPop').hidden = true; $('#syncBtn').setAttribute('aria-expanded', 'false'); $('#syncBtn').focus(); } });
+
+/* ---------------- 圖表 ---------------- */
+// 週平均體重：每週固定位置、干擾週灰底、排除週空心點、連到排除週的線段改虛線
+function weightChart(list, { w = 680, h = 240, selected = null, mini = false } = {}) {
+  const padL = mini ? 8 : 44, padR = mini ? 8 : 16, padT = mini ? 10 : 18, padB = mini ? 24 : 34;
+  const vals = list.filter((x) => x.weightKg.avg !== undefined).map((x) => x.weightKg.avg);
+  const lo = Math.floor(Math.min(...vals) - 0.3), hi = Math.ceil(Math.max(...vals) + 0.3);
+  const n0 = list[0].week, n1 = list[list.length - 1].week;
+  const step = (w - padL - padR) / Math.max(1, n1 - n0);
+  const X = (n) => padL + (n - n0) * step;
+  const Y = (v) => padT + (hi - v) / (hi - lo) * (h - padT - padB);
+  let s = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="第 ${n0} 到第 ${n1} 週的週平均體重，從 ${fmt(list[0].weightKg.avg, 1)} 公斤到 ${fmt(list[list.length - 1].weightKg.avg, 1)} 公斤；灰底為疾病或脫水干擾週">`;
+  list.forEach((x) => {
+    if (x.interference.length || x.excludeFromFatLoss) s += `<rect x="${X(x.week) - step / 2}" y="${padT - 6}" width="${step}" height="${h - padT - padB + 6}" fill="var(--shade)"/>`;
+  });
+  if (!mini) {
+    for (let v = lo; v <= hi; v++) {
+      s += `<line x1="${padL}" x2="${w - padR}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--rule)" stroke-dasharray="${v === lo ? '' : '2 5'}"/>`;
+      s += `<text x="${padL - 8}" y="${Y(v) + 4}" text-anchor="end" font-size="12">${v}</text>`;
+    }
+  }
+  for (let i = 1; i < list.length; i++) {
+    const a = list[i - 1], b = list[i];
+    if (a.weightKg.avg === undefined || b.weightKg.avg === undefined) continue;
+    const ex = a.excludeFromFatLoss || b.excludeFromFatLoss;
+    s += `<line x1="${X(a.week)}" y1="${Y(a.weightKg.avg)}" x2="${X(b.week)}" y2="${Y(b.weightKg.avg)}" stroke="${ex ? 'var(--faint)' : 'var(--ink)'}" stroke-width="${mini ? 2 : 2.6}" stroke-linecap="round" ${ex ? 'stroke-dasharray="4 5"' : ''}/>`;
+  }
+  list.forEach((x) => {
+    if (x.weightKg.avg === undefined) return;
+    const ex = x.excludeFromFatLoss, sel = selected === x.week, open = x.status === 'open';
+    const r = sel ? 7 : mini ? 3.5 : 5;
+    s += `<circle cx="${X(x.week)}" cy="${Y(x.weightKg.avg)}" r="${r}" fill="${ex || open ? 'var(--card)' : 'var(--ink)'}" stroke="${ex ? 'var(--faint)' : 'var(--ink)'}" stroke-width="2" ${open ? 'stroke-dasharray="2 2"' : ''} data-week="${x.week}" style="cursor:pointer"/>`;
+    if (sel && !mini) s += `<text x="${X(x.week)}" y="${Y(x.weightKg.avg) - 14}" text-anchor="middle" font-size="13" font-weight="700" style="fill:var(--ink)">${fmt(x.weightKg.avg, 2)}</text>`;
+    s += `<text x="${X(x.week)}" y="${h - (mini ? 6 : 10)}" text-anchor="middle" font-size="${mini ? 11 : 12}" ${sel ? 'font-weight="700" style="fill:var(--ink)"' : ''}>W${x.week}</text>`;
+  });
+  return s + '</svg>';
+}
+
+// 本週主視覺：起點到目標的刻度尺
+function ruler(start, now, prev, target) {
+  const w = 520, h = 84, L = 10, R = 10;
+  const X = (v) => L + (start - v) / (start - target) * (w - L - R);
+  let s = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="從起點 ${fmt(start)} 公斤到目標 ${fmt(target)} 公斤，目前 ${fmt(now, 2)} 公斤">`;
+  s += `<line x1="${L}" x2="${w - R}" y1="46" y2="46" stroke="var(--hero-line)" stroke-width="2"/>`;
+  s += `<line x1="${L}" x2="${X(now)}" y1="46" y2="46" stroke="var(--hero-ink)" stroke-width="4" stroke-linecap="round"/>`;
+  for (let v = Math.floor(start); v >= target; v--) {
+    const major = v % 5 === 0;
+    s += `<line x1="${X(v)}" x2="${X(v)}" y1="${major ? 34 : 40}" y2="52" stroke="var(--hero-line)" stroke-width="${major ? 2 : 1}"/>`;
+    if (major) s += `<text x="${X(v)}" y="72" text-anchor="middle" font-size="13" fill="var(--hero-muted)">${v}</text>`;
+  }
+  if (prev !== undefined) s += `<circle cx="${X(prev)}" cy="46" r="5" fill="none" stroke="var(--hero-muted)" stroke-width="1.5"/>`;
+  s += `<circle cx="${X(now)}" cy="46" r="8" fill="var(--hero-ink)"/>`;
+  s += `<text x="${X(now)}" y="22" text-anchor="middle" font-size="14" font-weight="700" fill="var(--hero-ink)">現在</text>`;
+  s += `<circle cx="${X(target)}" cy="46" r="7" fill="none" stroke="var(--hero-ink)" stroke-width="2"/>`;
+  return s + '</svg>';
+}
+
+function lineChart(points, { w = 520, h = 160, digits = 1, label = '' } = {}) {
+  if (points.length < 2) return '';
+  const padL = 40, padR = 16, padT = 16, padB = 30;
+  const vs = points.map((p) => p.v);
+  const lo = Math.floor(Math.min(...vs) - 0.5), hi = Math.ceil(Math.max(...vs) + 0.5);
+  const t0 = toUtc(points[0].d), t1 = toUtc(points[points.length - 1].d);
+  const X = (d) => padL + (toUtc(d) - t0) / Math.max(1, t1 - t0) * (w - padL - padR);
+  const Y = (v) => padT + (hi - v) / (hi - lo) * (h - padT - padB);
+  let s = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(label)}">`;
+  [lo, hi].forEach((v) => { s += `<line x1="${padL}" x2="${w - padR}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--rule)" ${v === hi ? 'stroke-dasharray="2 5"' : ''}/><text x="${padL - 8}" y="${Y(v) + 4}" text-anchor="end" font-size="12">${v}</text>`; });
+  s += `<polyline points="${points.map((p) => `${X(p.d)},${Y(p.v)}`).join(' ')}" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linejoin="round"/>`;
+  points.forEach((p, i) => {
+    s += `<circle cx="${X(p.d)}" cy="${Y(p.v)}" r="4.5" fill="${p.ill ? 'var(--card)' : 'var(--ink)'}" stroke="var(--ink)" stroke-width="2"/>`;
+    if (i === 0 || i === points.length - 1) s += `<text x="${X(p.d)}" y="${Y(p.v) - 10}" text-anchor="${i === 0 ? 'start' : 'end'}" font-size="12" font-weight="700" style="fill:var(--ink)">${fmt(p.v, digits)}</text>`;
+    s += `<text x="${X(p.d)}" y="${h - 8}" text-anchor="${i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'}" font-size="12">${md(p.d)}</text>`;
+  });
+  return s + '</svg>';
+}
+
+/* ---------------- 本週 ---------------- */
+function goalCard(title, value, unit, foot, visual) {
+  return `<div class="goal"><span class="t">${title}</span><span class="v">${value}<small>${unit}</small></span>${visual || ''}<span class="f">${foot}</span></div>`;
+}
+
+function renderWeek() {
+  const w = current, T = DATA.config.targets;
+  const start = weekStart(w.week), end = addDays(start, 6);
+  const prev = byWeek[w.week - 1];
+  const first = weeks[0];
+  const dailyMap = Object.fromEntries(DATA.daily.map((d) => [d.date, d]));
+  const remaining = Math.max(0, (toUtc(end) - toUtc(DATA.today)) / DAY + 1);
+
+  // 依規則產生、附上依據的提醒（不寫沒有依據的建議）
+  const notes = [];
+  const missing = [];
+  for (let i = 0; i < 7; i++) { const d = addDays(start, i); if (d <= dataThrough && typeof dailyMap[d]?.weightKg !== 'number') missing.push(d); }
+  if (w.trainingDays < T.trainingPerWeek) notes.push([`本週重訓 ${w.trainingDays} 次，還差 ${T.trainingPerWeek - w.trainingDays} 次`, `目標每週 ${T.trainingPerWeek} 次；本週含今天還剩 ${remaining} 天。`]);
+  if (w.proteinReportedDays) notes.push([`蛋白質 ${w.proteinReportedDays} 天中有 ${w.proteinTargetHitDays} 天達 ${T.proteinMinG} g`, `日均 ${fmt(w.proteinG.avg, 0)} g${w.proteinG.includesEstimate ? '，含估算值' : ''}；目標 ${T.proteinMinG}–${T.proteinMaxG} g。`]);
+  if (missing.length) notes.push([`${missing.map((d) => `${md(d)}（${wd(d)}）`).join('、')} 沒有體重紀錄`, `週平均以 ${w.weightKg.n} 天計算，未回報的日子不算進去。`]);
+  if (w.waterMl.n < w.reportedDays) notes.push([`飲水只有 ${w.waterMl.n} 天有紀錄`, `有紀錄的日均 ${fmt(w.waterMl.avg, 0)} ml，紀錄天數太少，暫不判讀。`]);
+
+  const dots = Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(start, i);
+    const on = typeof dailyMap[d]?.weightKg === 'number';
+    const future = d > dataThrough;
+    return `<span><b class="${on ? 'on' : future ? 'future' : ''}"></b>${wd(d)}</span>`;
+  }).join('');
+
+  const done = first.weightKg.avg - w.weightKg.avg;
+  const total = first.weightKg.avg - DATA.config.targetWeightKg;
+  const recent = weeks.slice(-9);
+
+  $('#v-week').innerHTML = `
+  <div class="stack">
+    <div>
+      <h1 id="h-week">第 ${w.week} 週</h1>
+      <p class="sub">${md(start)}（${wd(start)}）到 ${md(end)}（${wd(end)}），進行中，已有 ${w.weightKg.n} 天體重紀錄</p>
+    </div>
+
+    <section class="hero" aria-label="本週體重">
+      <div>
+        <div class="lbl">本週平均體重</div>
+        <div class="big">${fmt(w.weightKg.avg, 2)}<small>kg</small></div>
+        <div class="delta">${w.vsPrevWeek ? (w.vsPrevWeek.comparable ? `較上週 <strong>${signed(w.vsPrevWeek.deltaKg, 2)} kg</strong>` : '上週為干擾週，不比較') : ''}</div>
+      </div>
+      <div class="ruler">
+        ${ruler(first.weightKg.avg, w.weightKg.avg, prev?.weightKg.avg, DATA.config.targetWeightKg)}
+        <div class="cap"><span>第 ${first.week} 週起點 ${fmt(first.weightKg.avg)} kg</span><span>已減 ${fmt(done)} kg，還差 ${fmt(w.weightKg.avg - DATA.config.targetWeightKg)} kg（${Math.round(done / total * 100)}%）</span><span>目標 ${fmt(DATA.config.targetWeightKg)} kg</span></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="h-goals">
+      <h2 id="h-goals">本週目標</h2>
+      <div class="goals">
+        ${goalCard('蛋白質達標', w.proteinTargetHitDays, ` / ${w.proteinReportedDays} 天`, `日均 ${fmt(w.proteinG.avg, 0)} g，目標 ${T.proteinMinG}–${T.proteinMaxG} g${w.proteinG.includesEstimate ? ' <span class="badge est">含估算</span>' : ''}`,
+          `<div class="bar"><i style="width:${Math.min(100, w.proteinG.avg / T.proteinMinG * 100)}%"></i></div>`)}
+        ${goalCard('重訓', w.trainingDays, ` / ${T.trainingPerWeek} 次`, w.trainingDays >= T.trainingPerWeek ? '本週已達標' : `還差 ${T.trainingPerWeek - w.trainingDays} 次`,
+          `<div class="segs" style="grid-template-columns:repeat(${T.trainingPerWeek},minmax(0,1fr))">${Array.from({ length: T.trainingPerWeek }, (_, i) => `<i class="${i < w.trainingDays ? 'on' : ''}"></i>`).join('')}</div>`)}
+        ${goalCard('睡眠', fmt(w.sleepH.avg), ' 小時', `${w.sleepH.n} 天有紀錄的平均`)}
+        ${goalCard('紀錄完整度', w.weightKg.n, ' / 7 天', '實心為有體重紀錄', `<div class="days">${dots}</div>`)}
+      </div>
+    </section>
+
+    <div class="split">
+      <section class="panel" aria-labelledby="h-notes">
+        <h2 id="h-notes">這週要留意</h2>
+        <ul class="notes">${notes.map(([a, b]) => `<li><strong>${a}</strong><span class="why">${b}</span></li>`).join('')}</ul>
+      </section>
+      <section class="panel" aria-labelledby="h-mini">
+        <h2 id="h-mini">近 ${recent.length} 週平均體重</h2>
+        <div class="chart">${weightChart(recent, { w: 520, h: 170, mini: true })}</div>
+        <div class="legend"><span><i class="sw box"></i>疾病或脫水週，不列入減脂評估</span></div>
+        <a class="linkbtn" href="#trend" style="display:inline-flex;align-items:center">看完整趨勢與週報</a>
+      </section>
+    </div>
+  </div>`;
+}
+
+/* ---------------- 趨勢與週報 ---------------- */
+let selectedWeek = current.week;
+function renderTrend() {
+  const w = byWeek[selectedWeek];
+  const T = DATA.config.targets;
+  const start = weekStart(w.week), end = addDays(start, 6);
+  const dailyMap = Object.fromEntries(DATA.daily.map((d) => [d.date, d]));
+  const hasDaily = DATA.daily.some((d) => weekNo(d.date) === w.week);
+  const vs = w.vsPrevWeek
+    ? (w.vsPrevWeek.comparable ? `<strong>${signed(w.vsPrevWeek.deltaKg, 2)} kg</strong><em>與第 ${w.week - 1} 週相比</em>` : `<strong>不比較</strong><em>${byWeek[w.week].excludeFromFatLoss ? '本週為干擾週' : `第 ${w.week - 1} 週為干擾週`}</em>`)
+    : '<strong>—</strong><em>沒有前一週資料</em>';
+  const stat = (o, d, unit) => (o.n ? `<strong>${fmt(o.avg, d)} ${unit}</strong><em>${o.n} 天有紀錄${o.includesEstimate ? '，含估算' : ''}</em>` : '<strong class="muted">未回報</strong><em>這週沒有紀錄</em>');
+
+  const strip = hasDaily ? `<h3 class="small muted" style="margin:18px 0 8px">每日體重</h3><div class="strip">${Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(start, i), x = dailyMap[d];
+    if (d > dataThrough) return `<div class="cell future">${wd(d)}<b>未到</b></div>`;
+    if (typeof x?.weightKg !== 'number') return `<div class="cell none">${wd(d)}<b>未回報</b></div>`;
+    return `<div class="cell">${wd(d)}<b>${fmt(x.weightKg)}</b></div>`;
+  }).join('')}</div>` : '';
+
+  $('#v-trend').innerHTML = `
+  <div class="stack">
+    <div>
+      <h1 id="h-trend">趨勢與週報</h1>
+      <p class="sub">點選圖上的週次或下方按鈕，查看該週的週報。</p>
+    </div>
+    <section class="panel" aria-labelledby="h-wchart">
+      <h2 id="h-wchart">週平均體重，第 ${weeks[0].week} 到第 ${current.week} 週</h2>
+      <div class="chart" id="trendChart">${weightChart(weeks, { selected: selectedWeek })}</div>
+      <div class="legend">
+        <span><i class="sw"></i>週平均</span>
+        <span><i class="sw dash"></i>經過干擾週的變化</span>
+        <span><i class="sw box"></i>疾病或脫水週</span>
+        <span>空心點：干擾週或尚未結案</span>
+      </div>
+    </section>
+
+    <div class="chips" role="group" aria-label="選擇週次">
+      ${[...weeks].reverse().map((x) => `<button type="button" class="chip" data-week="${x.week}" aria-pressed="${x.week === selectedWeek}">第 ${x.week} 週${x.excludeFromFatLoss ? '<i class="x" aria-label="干擾週"></i>' : ''}</button>`).join('')}
+    </div>
+
+    <section class="panel" aria-labelledby="h-report">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+        <div>
+          <h2 id="h-report" style="margin:0">第 ${w.week} 週週報</h2>
+          <span class="small muted">${ymd(start)} 到 ${ymd(end)}</span>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span class="badge ${w.status === 'closed' ? 'ok' : ''}">${w.status === 'closed' ? '已結案' : '進行中'}</span>
+          ${w.interference.map((k) => `<span class="badge ill">${INTERF[k]}</span>`).join('')}
+          ${w.excludeFromFatLoss ? '<span class="badge todo">不列入減脂評估</span>' : ''}
+        </div>
+      </div>
+      <div class="mgrid">
+        <div class="m"><span>平均體重</span>${w.weightKg.n ? `<strong>${fmt(w.weightKg.avg, 2)} kg</strong><em>${w.weightKg.n} 天有紀錄</em>` : '<strong class="muted">未回報</strong>'}</div>
+        <div class="m"><span>週變化</span>${vs}</div>
+        <div class="m"><span>蛋白質</span>${w.proteinG.n ? `<strong>${w.proteinTargetHitDays} / ${w.proteinReportedDays} 天達標</strong><em>日均 ${fmt(w.proteinG.avg, 0)} g${w.proteinG.includesEstimate ? '，含估算' : ''}</em>` : '<strong class="muted">未回報</strong>'}</div>
+        <div class="m"><span>重訓</span><strong>${w.trainingDays} / ${T.trainingPerWeek} 次</strong><em>${w.trainingReportedDays} 天有紀錄</em></div>
+        <div class="m"><span>睡眠</span>${stat(w.sleepH, 1, '小時')}</div>
+        <div class="m"><span>飲水</span>${stat(w.waterMl, 0, 'ml')}</div>
+        <div class="m"><span>熱量</span>${stat(w.kcal, 0, 'kcal')}</div>
+        <div class="m"><span>紀錄天數</span><strong>${w.reportedDays} / 7 天</strong><em>以體重紀錄計</em></div>
+      </div>
+      ${strip}
+      <div class="prose">
+        <h3>判讀</h3>
+        <p class="${w.note ? '' : 'muted'}">${w.note ? esc(w.note) : '這週還沒有判讀文字，週日結案時補上。'}</p>
+        <h3>下週策略</h3>
+        <p class="${w.strategy ? '' : 'muted'}">${w.strategy ? esc(w.strategy) : '這週還沒有下週策略。'}</p>
+      </div>
+    </section>
+  </div>`;
+
+  const pick = (n) => { selectedWeek = n; renderTrend(); $(`.chip[data-week="${n}"]`)?.focus({ preventScroll: true }); };
+  document.querySelectorAll('#v-trend .chip').forEach((b) => b.addEventListener('click', () => pick(+b.dataset.week)));
+  document.querySelectorAll('#trendChart circle[data-week]').forEach((c) => c.addEventListener('click', () => pick(+c.dataset.week)));
+}
+
+/* ---------------- 身體組成 ---------------- */
+function renderBody() {
+  const groups = {};
+  DATA.bodyComposition.forEach((b) => (groups[b.instrument] ??= []).push(b));
+  const panels = Object.entries(groups).map(([inst, rows]) => {
+    rows.sort((a, b) => a.date.localeCompare(b.date));
+    const last = rows[rows.length - 1];
+    const unverified = rows.filter((r) => !r.verified).length;
+    const charts = rows.length >= 2 ? `
+      <div class="split" style="margin-top:8px">
+        <div><h3 class="small muted" style="margin:0 0 4px">體脂率（%）</h3><div class="chart">${lineChart(rows.map((r) => ({ d: r.date, v: r.bodyFatPct, ill: !!r.interference })), { label: `${inst} 體脂率趨勢` })}</div></div>
+        <div><h3 class="small muted" style="margin:0 0 4px">骨骼肌（kg）</h3><div class="chart">${lineChart(rows.map((r) => ({ d: r.date, v: r.smmKg, ill: !!r.interference })), { label: `${inst} 骨骼肌趨勢` })}</div></div>
+      </div>` : `<p class="small muted" style="margin:8px 0 0">這台設備只有一次量測，累積兩次以上才會畫出趨勢。</p>`;
+    return `
+    <section class="panel" aria-label="${esc(inst)}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+        <div><h2 style="margin:0">${esc(inst)}</h2><span class="small muted">${rows.length} 次量測，最近一次 ${ymd(last.date)}${last.location ? `，${esc(last.location)}` : ''}</span></div>
+        ${unverified ? `<span class="badge todo">${unverified} 筆待核對原始報告</span>` : '<span class="badge ok">已核對</span>'}
+      </div>
+      <div class="mgrid" style="margin-top:14px">
+        <div class="m"><span>體重</span><strong>${fmt(last.weightKg)} kg</strong></div>
+        <div class="m"><span>骨骼肌</span><strong>${fmt(last.smmKg)} kg</strong>${rows.length > 1 ? `<em>較首次 ${signed(last.smmKg - rows[0].smmKg)} kg</em>` : ''}</div>
+        <div class="m"><span>體脂率</span><strong>${fmt(last.bodyFatPct)} %</strong>${rows.length > 1 ? `<em>較首次 ${signed(last.bodyFatPct - rows[0].bodyFatPct)}</em>` : ''}</div>
+        <div class="m"><span>內臟脂肪</span>${last.visceralFatLevel !== undefined ? `<strong>${last.visceralFatLevel} 級</strong>` : '<strong class="muted">未量測</strong><em>這台設備沒有此項</em>'}</div>
+      </div>
+      ${charts}
+    </section>`;
+  }).join('');
+  $('#v-body').innerHTML = `
+  <div class="stack">
+    <div>
+      <h1 id="h-body">身體組成</h1>
+      <p class="sub">不同設備的量測方式不同，各自看自己的變化，不互相比較。</p>
+    </div>
+    ${panels}
+  </div>`;
+}
+
+/* ---------------- 醫療：只解密已加密紀錄，舊資料不會在未解鎖時顯示 ---------------- */
+const VERIFIER={salt:'q3TT+7vwg4G12rQYRvn71A==',iv:'1ioi5zYp1VsFe1Lf',ciphertext:'hCvK2dt7GjI3/Ks7x2l9q+ElBcOM9EkEtdqblURenztGl3//KA==',iterations:600000};
+let unlockTimer=null,unlockUntil=0,medicalKey=null,medicalRecords=[],legacyMedical=[];
+const b64=u=>btoa(String.fromCharCode(...new Uint8Array(u)));
+const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function derive(pw){const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt:unb64(VERIFIER.salt),iterations:VERIFIER.iterations,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+async function decryptDoc(key,doc){const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(doc.iv)},key,unb64(doc.ciphertext));return JSON.parse(new TextDecoder().decode(plain))}
+async function encryptDoc(key,value){const iv=crypto.getRandomValues(new Uint8Array(12));const ciphertext=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(value)));return {version:1,iv:b64(iv),ciphertext:b64(ciphertext),encryptedAt:new Date().toISOString()}}
+function lockMedical(render=true){if(unlockTimer)clearInterval(unlockTimer);unlockTimer=null;unlockUntil=0;medicalKey=null;medicalRecords=[];if(render)renderMedicalLocked()}
+function renderMedicalLocked(){
+ $('#v-medical').innerHTML=`<div class="lock"><div class="ic">${ICONS.medical}</div><h1 id="h-medical">醫療檔案已上鎖</h1><p class="muted">需先使用授權 Google 帳號登入，再輸入醫療密碼。解密僅在本裝置進行。</p><form id="unlockForm"><label for="medPw">醫療密碼</label><input id="medPw" type="password" autocomplete="off" required><p class="err" id="medErr" role="alert"></p><button class="primary">解鎖醫療資料</button></form><p class="small muted">閒置五分鐘、離開醫療頁或切換 App 時自動上鎖。忘記密碼將無法復原加密資料。</p></div>`;
+ $('#unlockForm').onsubmit=async e=>{e.preventDefault();const input=$('#medPw');const pw=input.value;input.value='';try{const key=await derive(pw);const v=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(VERIFIER.iv)},key,unb64(VERIFIER.ciphertext));if(new TextDecoder().decode(v)!=='ben-health-medical-v1')throw Error('invalid');medicalKey=key;const snap=await getDocs(collection(db,'users',activeUser.uid,'medicalEncrypted'));medicalRecords=await Promise.all(snap.docs.map(async d=>({id:d.id,data:await decryptDoc(key,d.data())})));renderMedicalUnlocked()}catch(err){medicalKey=null;$('#medErr').textContent='無法解鎖，請確認密碼或加密資料狀態。'}};
+}
+function renderMedicalUnlocked(){
+ unlockUntil=Date.now()+300000;
+ const rows=medicalRecords.map(r=>`<details class="panel"><summary><strong>${esc(r.data.date||r.id)}</strong>　${esc(r.data.type||r.data.reportType||'醫療紀錄')}</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px">${esc(JSON.stringify(r.data,null,2))}</pre></details>`).join('');
+ $('#v-medical').innerHTML=`<div class="stack"><div class="unlockbar"><div><h1 id="h-medical">醫療檔案</h1><p class="sub" id="lockLeft"></p></div><button class="ghost" id="lockNow">立即上鎖</button></div><p class="small muted">目前顯示已在瀏覽器加密、存入 Firestore 的紀錄；既有未加密診所資料不會自動公開。</p>${rows||'<section class="panel"><h2>尚無已加密的醫療紀錄</h2><p>可將既有 Firestore 醫療資料加密複製進保護區。</p></section>'}<section class="panel"><h2>既有醫療資料轉入加密區</h2><p class="small muted">偵測到 ${legacyMedical.length} 筆舊資料。執行後會建立加密副本，原始資料不刪除，待核對後再另行處理。</p><button class="ghost" id="migrate" ${legacyMedical.length?'':'disabled'}>加密匯入舊紀錄</button><p id="migrateStatus" role="status" class="small muted"></p></section></div>`;
+ $('#lockNow').onclick=()=>lockMedical();
+ $('#migrate').onclick=async()=>{const btn=$('#migrate');btn.disabled=true;const status=$('#migrateStatus');try{let n=0;for(const item of legacyMedical){const enc=await encryptDoc(medicalKey,item.data);await setDoc(doc(db,'users',activeUser.uid,'medicalEncrypted',item.id),enc);n++}status.textContent='已加密寫入 '+n+' 筆，舊資料仍保留。請重新解鎖檢查。'}catch(e){status.textContent='加密匯入未完成：'+(e.code||e.message)}};
+ if(unlockTimer)clearInterval(unlockTimer);
+ unlockTimer=setInterval(()=>{const left=Math.max(0,unlockUntil-Date.now());if(!left){lockMedical();return}const el=$('#lockLeft');if(el)el.textContent=Math.ceil(left/1000)+' 秒後自動上鎖'},1000);
+}
+['pointerdown','keydown','scroll'].forEach(ev=>window.addEventListener(ev,()=>{if(unlockTimer)unlockUntil=Date.now()+300000},{passive:true}));
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&unlockTimer)lockMedical()});
+
+/* ---------------- Firebase 身分驗證與資料載入 ---------------- */
+import{initializeApp}from'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
+import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut}from'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
+import{getFirestore,collection,getDocs,doc,setDoc}from'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+import{firebaseConfig,ownerUid}from'./firebase-config.js';
+const auth=getAuth(initializeApp(firebaseConfig)),db=getFirestore(auth.app);
+let activeUser=null;
+const gate=document.createElement('section');gate.className='panel';gate.style='max-width:460px;margin:48px auto;text-align:center';gate.innerHTML='<h1>Ben Health OS 2.0</h1><p>登入授權 Google 帳號後，才會讀取私人健康資料。</p><button class="primary" id="googleLogin">使用 Google 登入</button><p id="loginMsg" role="status"></p>';
+document.querySelector('main').before(gate);
+document.querySelector('main').hidden=true;document.querySelector('.top').hidden=true;document.querySelector('.bottom').hidden=true;
+$('#googleLogin').onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(e){$('#loginMsg').textContent='登入失敗：'+(e.code||e.message)}};
+const numeric=(o,...keys)=>{for(const k of keys)if(typeof o?.[k]==='number')return o[k];return undefined};
+function normalizeWeek(r){
+ const m=String(r.week??r.id??'').match(/(\d+)/),week=m?+m[1]:null;
+ const avg=numeric(r,'averageWeightKg','avgWeightKg')??numeric(r.weightKg,'avg');
+ if(!week||avg===undefined)return null;
+ const n=numeric(r,'weightDays','reportedDays')??r.weightKg?.n??0;
+ const interference=Array.isArray(r.interference)?r.interference:(week===12?['illness','dehydration']:week===13?['illness']:[]);
+ return {week,status:r.status==='open'?'open':'closed',reportedDays:n,weightKg:{avg,n},proteinG:{avg:numeric(r,'averageProteinG')??0,n:0},proteinTargetHitDays:0,proteinReportedDays:0,trainingDays:0,trainingReportedDays:0,sleepH:{avg:0,n:0},waterMl:{avg:0,n:0},kcal:{avg:0,n:0},interference,excludeFromFatLoss:week===12||week===13||r.excludeFromFatLoss===true,note:r.notes||r.note||'',strategy:r.strategy||''}
+}
+async function loadRealData(user){
+ const names=['daily','weeks','bodyComposition','labs'];
+ const snaps=await Promise.all(names.map(n=>getDocs(collection(db,'users',user.uid,n))));
+ const all=Object.fromEntries(names.map((n,i)=>[n,snaps[i].docs.map(d=>({id:d.id,...d.data()}))]));
+ DATA.daily.splice(0,DATA.daily.length,...all.daily.filter(x=>/^\d{4}-\d\d-\d\d$/.test(x.date||x.id)).map(x=>({date:x.date||x.id,weightKg:numeric(x,'weightKg'),sleepH:numeric(x,'sleepHours','sleepH'),waterMl:numeric(x,'waterMl'),proteinG:numeric(x,'proteinG'),notes:x.notes||'',estimated:[]})).sort((a,b)=>a.date.localeCompare(b.date)));
+ DATA.weeks.splice(0,DATA.weeks.length,...all.weeks.map(normalizeWeek).filter(Boolean).sort((a,b)=>a.week-b.week));
+ for(const k of Object.keys(byWeek))delete byWeek[k];
+ DATA.weeks.forEach(w=>byWeek[w.week]=w);
+ for(let i=1;i<DATA.weeks.length;i++){const a=DATA.weeks[i-1],b=DATA.weeks[i];b.vsPrevWeek={deltaKg:b.weightKg.avg-a.weightKg.avg,comparable:!a.excludeFromFatLoss&&!b.excludeFromFatLoss&&b.week===a.week+1}}
+ current=DATA.weeks.at(-1);
+ DATA.bodyComposition.splice(0,DATA.bodyComposition.length,...all.bodyComposition.filter(x=>!/診所|clinic|inbody/i.test(String(x.source||x.deviceModel||''))).map(x=>({date:x.date,id:x.id,instrument:x.source||x.deviceModel||'家用設備',weightKg:numeric(x,'weightKg'),smmKg:numeric(x,'skeletalMuscleKg'),bodyFatPct:numeric(x,'bodyFatPct'),verified:x.valid!==false})));
+ legacyMedical=[...all.labs.map(x=>({id:'lab-'+x.id,data:{...x,type:'檢驗'}})),...all.bodyComposition.filter(x=>/診所|clinic|inbody/i.test(String(x.source||x.deviceModel||''))).map(x=>({id:'clinic-'+x.id,data:{...x,type:'診所 InBody'}}))];
+ dataThrough=DATA.daily.map(d=>d.date).sort().at(-1)||'';
+ DATA.lastSync.finishedAt=new Date().toISOString();
+ DATA.lastSync.readBack.expected=all.daily.length+all.weeks.length+all.bodyComposition.length+all.labs.length;
+ DATA.lastSync.readBack.matched=DATA.lastSync.readBack.expected;
+ if(!current)throw Error('Firestore 尚無可顯示的週報資料');
+ selectedWeek=current.week;renderSync();renderWeek();renderTrend();renderBody();renderMedicalLocked();route();
+}
+onAuthStateChanged(auth,async user=>{
+ lockMedical(false);activeUser=null;
+ const allowed=!!user&&user.uid===ownerUid&&user.providerData.some(p=>p.providerId==='google.com');
+ gate.hidden=allowed;document.querySelector('main').hidden=!allowed;document.querySelector('.top').hidden=!allowed;document.querySelector('.bottom').hidden=!allowed;
+ if(!allowed){$('#loginMsg').textContent=user?'這個帳號未獲授權':'請使用 Google 帳號登入';return}
+ activeUser=user;
+ try{await loadRealData(user)}catch(e){document.querySelector('main').hidden=true;gate.hidden=false;$('#loginMsg').textContent='讀取 Firestore 失敗：'+(e.code||e.message)}
+});
+
+</script>
+</body>
+</html>
