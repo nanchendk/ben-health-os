@@ -404,7 +404,7 @@ function renderWeek() {
   <div class="stack">
     <div>
       <h1 id="h-week">第 ${w.week} 週</h1>
-      <p class="sub">${md(start)}（${wd(start)}）到 ${md(end)}（${wd(end)}），進行中，已有 ${w.weightKg.n} 天體重紀錄</p>
+      <p class="sub">${md(start)}（${wd(start)}）到 ${md(end)}（${wd(end)}），${w.status==='closed'?'已結案':'進行中'}，已有 ${w.weightKg.n} 天體重紀錄</p>
     </div>
 
     <section class="hero" aria-label="本週體重">
@@ -422,11 +422,11 @@ function renderWeek() {
     <section aria-labelledby="h-goals">
       <h2 id="h-goals">本週目標</h2>
       <div class="goals">
-        ${goalCard('蛋白質達標', w.proteinTargetHitDays, ` / ${w.proteinReportedDays} 天`, `日均 ${fmt(w.proteinG.avg, 0)} g，目標 ${T.proteinMinG}–${T.proteinMaxG} g${w.proteinG.includesEstimate ? ' <span class="badge est">含估算</span>' : ''}`,
-          `<div class="bar"><i style="width:${Math.min(100, w.proteinG.avg / T.proteinMinG * 100)}%"></i></div>`)}
-        ${goalCard('重訓', w.trainingDays, ` / ${T.trainingPerWeek} 次`, w.trainingDays >= T.trainingPerWeek ? '本週已達標' : `還差 ${T.trainingPerWeek - w.trainingDays} 次`,
+        ${goalCard('蛋白質達標', w.proteinReportedDays?w.proteinTargetHitDays:'未回報', w.proteinReportedDays?` / ${w.proteinReportedDays} 天`:'', `日均 ${fmt(w.proteinG.avg, 0)} g，目標 ${T.proteinMinG}–${T.proteinMaxG} g${w.proteinG.includesEstimate ? ' <span class="badge est">含估算</span>' : ''}`,
+          `<div class="bar"><i style="width:${Math.min(100, (w.proteinG.avg||0) / T.proteinMinG * 100)}%"></i></div>`)}
+        ${goalCard('重訓', w.trainingReportedDays?w.trainingDays:'未回報', w.trainingReportedDays?` / ${T.trainingPerWeek} 次`:'', !w.trainingReportedDays?'尚無可核對的運動紀錄':w.trainingDays >= T.trainingPerWeek ? '本週已達標' : `還差 ${T.trainingPerWeek - w.trainingDays} 次`,
           `<div class="segs" style="grid-template-columns:repeat(${T.trainingPerWeek},minmax(0,1fr))">${Array.from({ length: T.trainingPerWeek }, (_, i) => `<i class="${i < w.trainingDays ? 'on' : ''}"></i>`).join('')}</div>`)}
-        ${goalCard('睡眠', fmt(w.sleepH.avg), ' 小時', `${w.sleepH.n} 天有紀錄的平均`)}
+        ${goalCard('睡眠', w.sleepH.n?fmt(w.sleepH.avg):'未回報', w.sleepH.n?' 小時':'', `${w.sleepH.n} 天有紀錄的平均`)}
         ${goalCard('紀錄完整度', w.weightKg.n, ' / 7 天', '實心為有體重紀錄', `<div class="days">${dots}</div>`)}
       </div>
     </section>
@@ -559,7 +559,7 @@ function renderBody() {
       <h1 id="h-body">身體組成</h1>
       <p class="sub">不同設備的量測方式不同，各自看自己的變化，不互相比較。</p>
     </div>
-    ${panels}
+    ${panels || '<section class="panel"><h2>尚無可顯示的身體組成紀錄</h2><p class="muted">Firestore 資料尚未對應到可用的量測欄位，或尚未完成驗證。原始資料未刪除。</p></section>'}
   </div>`;
 }
 
@@ -606,7 +606,7 @@ function normalizeWeek(r){
  if(!week||week>53||avg===undefined)return null;
  const n=numeric(r,'weightDays','reportedDays')??r.weightKg?.n??0;
  const interference=Array.isArray(r.interference)?r.interference:(week===12?['illness','dehydration']:week===13?['illness']:[]);
- return {week,status:r.status==='open'?'open':'closed',reportedDays:n,weightKg:{avg,n},proteinG:{avg:numeric(r,'averageProteinG'),n:0},proteinTargetHitDays:0,proteinReportedDays:0,trainingDays:0,trainingReportedDays:0,sleepH:{avg:undefined,n:0},waterMl:{avg:undefined,n:0},kcal:{avg:undefined,n:0},interference,excludeFromFatLoss:week===12||week===13||r.excludeFromFatLoss===true,note:r.notes||r.note||'',strategy:r.strategy||''}
+ return {week,status:r.status==='open'?'open':(r.status==='closed'||week<=14?'closed':'open'),reportedDays:n,weightKg:{avg,n},proteinG:{avg:numeric(r,'averageProteinG'),n:0},proteinTargetHitDays:0,proteinReportedDays:0,trainingDays:0,trainingReportedDays:0,sleepH:{avg:undefined,n:0},waterMl:{avg:undefined,n:0},kcal:{avg:undefined,n:0},interference,excludeFromFatLoss:week===12||week===13||r.excludeFromFatLoss===true,note:r.notes||r.note||'',strategy:r.strategy||''}
 }
 async function loadRealData(user){
  const names=['daily','weeks','bodyComposition','labs'];
@@ -614,6 +614,8 @@ async function loadRealData(user){
  const all=Object.fromEntries(names.map((n,i)=>[n,snaps[i].docs.map(d=>({id:d.id,...d.data()}))]));
  DATA.daily.splice(0,DATA.daily.length,...all.daily.filter(x=>/^\d{4}-\d\d-\d\d$/.test(x.date||x.id)).map(x=>({date:x.date||x.id,weightKg:numeric(x,'weightKg'),sleepH:numeric(x,'sleepHours','sleepH'),waterMl:numeric(x,'waterMl'),proteinG:numeric(x,'proteinG'),notes:x.notes||'',estimated:[]})).sort((a,b)=>a.date.localeCompare(b.date)));
  const normalized=all.weeks.map(normalizeWeek).filter(Boolean);
+ const hasWeek12=normalized.some(w=>w.week===12);
+ if(!hasWeek12){const w12weights=DATA.daily.filter(d=>weekNo(d.date)===12&&typeof d.weightKg==='number');if(w12weights.length){normalized.push({week:12,status:'closed',reportedDays:w12weights.length,weightKg:{avg:w12weights.reduce((a,d)=>a+d.weightKg,0)/w12weights.length,n:w12weights.length},proteinG:{avg:undefined,n:0},proteinTargetHitDays:0,proteinReportedDays:0,trainingDays:0,trainingReportedDays:0,sleepH:{avg:undefined,n:0},waterMl:{avg:undefined,n:0},kcal:{avg:undefined,n:0},interference:['illness','dehydration'],excludeFromFatLoss:true,note:'疾病／脫水干擾；此週平均為可用晨重的重算值，尚未核對正式結案',strategy:''})}}
  const dailyForWeek=week=>DATA.daily.filter(d=>weekNo(d.date)===week&&typeof d.weightKg==='number');
  for(const w of normalized){const ds=dailyForWeek(w.week);w.weightKg.n=ds.length||w.weightKg.n;w.reportedDays=ds.length||w.reportedDays;for(const [field,key] of [['sleepH','sleepH'],['waterMl','waterMl'],['proteinG','proteinG']]){const vals=DATA.daily.filter(d=>weekNo(d.date)===w.week&&typeof d[key]==='number').map(d=>d[key]);if(vals.length){w[field]={avg:vals.reduce((a,b)=>a+b,0)/vals.length,n:vals.length}}}}
  DATA.weeks.splice(0,DATA.weeks.length,...normalized.sort((a,b)=>a.week-b.week));
