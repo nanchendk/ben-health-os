@@ -268,19 +268,19 @@ window.addEventListener('hashchange', route);
 function renderSync() {
   const s = DATA.lastSync;
   const stale = !dataThrough || dataThrough < addDays(DATA.today, -2);
-  const okRead = s.readBack.matched === s.readBack.expected;
+  const okRead = false;
   $('#syncDot').classList.toggle('warn', !okRead || stale);
   $('#syncLabel').textContent = dataThrough ? `資料更新至 ${md(dataThrough)}（${wd(dataThrough)}）` : '尚無可用紀錄';
-  const t = s.finishedAt ? new Date(s.finishedAt) : new Date();
-  const local = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(t);
+  const t = s.finishedAt ? new Date(s.finishedAt) : null;
+  const local = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(t||new Date());
   $('#syncPop').innerHTML = `
     <h3>資料同步</h3>
-    <div class="kv"><span>最後同步</span><span>${local}</span></div>
-    <div class="kv"><span>讀回核對</span><span>${okRead ? '全部一致' : '有不一致'}（${s.readBack.matched} / ${s.readBack.expected}）</span></div>
+    <div class="kv"><span>最後同步</span><span>${t?local:'未提供同步時間'}</span></div>
+    <div class="kv"><span>讀回核對</span><span>尚未執行資料庫讀回驗證</span></div>
     <div class="kv"><span>本次變更</span><span>新增 ${s.counts.created}，更新 ${s.counts.updated}</span></div>
-    <div class="kv"><span>資料最後一天</span><span>${dataThrough ? ymd(dataThrough) + '（' + wd(dataThrough) + '）' : '未回報'}</span></div>
+    <div class="kv"><span>最新紀錄日期</span><span>${dataThrough ? ymd(dataThrough) + '（' + wd(dataThrough) + '）' : '未回報'}</span></div>
     <div class="kv"><span>版本</span><span>${esc(s.commit)}</span></div>
-    <p class="small muted" style="margin:10px 0 0">${DATA.today > dataThrough ? `今天（${md(DATA.today)}）的資料還沒同步，預計 23:30 更新。` : '已包含今天的資料。'}</p>`;
+    <p class="small muted" style="margin:10px 0 0">${DATA.today > dataThrough ? `今天（${md(DATA.today)}）尚無紀錄；未確認同步排程。` : '已包含今天的資料。'}</p>`;
 }
 $('#syncBtn').addEventListener('click', (e) => {
   const pop = $('#syncPop');
@@ -378,16 +378,16 @@ function renderWeek() {
   const prev = byWeek[w.week - 1];
   const first = weeks[0];
   const dailyMap = Object.fromEntries(DATA.daily.map((d) => [d.date, d]));
-  const remaining = Math.max(0, (toUtc(end) - toUtc(DATA.today)) / DAY + 1);
+  const remaining = Math.max(0, Math.min(7, Math.ceil((toUtc(end) - toUtc(DATA.today)) / DAY + 1)));
 
   // 依規則產生、附上依據的提醒（不寫沒有依據的建議）
   const notes = [];
   const missing = [];
   for (let i = 0; i < 7; i++) { const d = addDays(start, i); if (d <= dataThrough && typeof dailyMap[d]?.weightKg !== 'number') missing.push(d); }
-  if (w.trainingDays < T.trainingPerWeek) notes.push([`本週重訓 ${w.trainingDays} 次，還差 ${T.trainingPerWeek - w.trainingDays} 次`, `目標每週 ${T.trainingPerWeek} 次；本週含今天還剩 ${remaining} 天。`]);
+  if (w.trainingReportedDays && w.trainingDays < T.trainingPerWeek) notes.push([`本週重訓 ${w.trainingDays} 次，還差 ${T.trainingPerWeek - w.trainingDays} 次`, `目標每週 ${T.trainingPerWeek} 次；本週含今天還剩 ${remaining} 天。`]);
   if (w.proteinReportedDays) notes.push([`蛋白質 ${w.proteinReportedDays} 天中有 ${w.proteinTargetHitDays} 天達 ${T.proteinMinG} g`, `日均 ${fmt(w.proteinG.avg, 0)} g${w.proteinG.includesEstimate ? '，含估算值' : ''}；目標 ${T.proteinMinG}–${T.proteinMaxG} g。`]);
   if (missing.length) notes.push([`${missing.map((d) => `${md(d)}（${wd(d)}）`).join('、')} 沒有體重紀錄`, `週平均以 ${w.weightKg.n} 天計算，未回報的日子不算進去。`]);
-  if (w.waterMl.n < w.reportedDays) notes.push([`飲水只有 ${w.waterMl.n} 天有紀錄`, `有紀錄的日均 ${fmt(w.waterMl.avg, 0)} ml，紀錄天數太少，暫不判讀。`]);
+  if (w.waterMl.n > 0 && w.waterMl.n < w.reportedDays) notes.push([`飲水只有 ${w.waterMl.n} 天有紀錄`, `有紀錄的日均 ${fmt(w.waterMl.avg, 0)} ml，紀錄天數太少，暫不判讀。`]);
 
   const dots = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(start, i);
@@ -601,19 +601,22 @@ document.querySelector('main').hidden=true;document.querySelector('.top').hidden
 $('#googleLogin').onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(e){$('#loginMsg').textContent='登入失敗：'+(e.code||e.message)}};
 const numeric=(o,...keys)=>{for(const k of keys)if(typeof o?.[k]==='number')return o[k];return undefined};
 function normalizeWeek(r){
- const m=String(r.week??r.id??'').match(/(\d+)/),week=m?+m[1]:null;
+ const raw=String(r.week??r.id??''); const hit=raw.match(/(?:^|[^0-9])W(?:eek)?\s*0?(\d{1,2})(?!\d)/i)||raw.match(/^\s*(\d{1,2})\s*$/); const week=hit?Number(hit[1]):null;
  const avg=numeric(r,'averageWeightKg','avgWeightKg')??numeric(r.weightKg,'avg');
- if(!week||avg===undefined)return null;
- const n=numeric(r,'weightDays','reportedDays')??r.weightKg?.n??7;
+ if(!week||week>53||avg===undefined)return null;
+ const n=numeric(r,'weightDays','reportedDays')??r.weightKg?.n??0;
  const interference=Array.isArray(r.interference)?r.interference:(week===12?['illness','dehydration']:week===13?['illness']:[]);
- return {week,status:r.status==='open'?'open':'closed',reportedDays:n,weightKg:{avg,n},proteinG:{avg:numeric(r,'averageProteinG')??0,n:0},proteinTargetHitDays:0,proteinReportedDays:0,trainingDays:0,trainingReportedDays:0,sleepH:{avg:0,n:0},waterMl:{avg:0,n:0},kcal:{avg:0,n:0},interference,excludeFromFatLoss:week===12||week===13||r.excludeFromFatLoss===true,note:r.notes||r.note||'',strategy:r.strategy||''}
+ return {week,status:r.status==='open'?'open':'closed',reportedDays:n,weightKg:{avg,n},proteinG:{avg:numeric(r,'averageProteinG'),n:0},proteinTargetHitDays:0,proteinReportedDays:0,trainingDays:0,trainingReportedDays:0,sleepH:{avg:undefined,n:0},waterMl:{avg:undefined,n:0},kcal:{avg:undefined,n:0},interference,excludeFromFatLoss:week===12||week===13||r.excludeFromFatLoss===true,note:r.notes||r.note||'',strategy:r.strategy||''}
 }
 async function loadRealData(user){
  const names=['daily','weeks','bodyComposition','labs'];
  const snaps=await Promise.all(names.map(n=>getDocs(collection(db,'users',user.uid,n))));
  const all=Object.fromEntries(names.map((n,i)=>[n,snaps[i].docs.map(d=>({id:d.id,...d.data()}))]));
  DATA.daily.splice(0,DATA.daily.length,...all.daily.filter(x=>/^\d{4}-\d\d-\d\d$/.test(x.date||x.id)).map(x=>({date:x.date||x.id,weightKg:numeric(x,'weightKg'),sleepH:numeric(x,'sleepHours','sleepH'),waterMl:numeric(x,'waterMl'),proteinG:numeric(x,'proteinG'),notes:x.notes||'',estimated:[]})).sort((a,b)=>a.date.localeCompare(b.date)));
- DATA.weeks.splice(0,DATA.weeks.length,...all.weeks.map(normalizeWeek).filter(Boolean).sort((a,b)=>a.week-b.week));
+ const normalized=all.weeks.map(normalizeWeek).filter(Boolean);
+ const dailyForWeek=week=>DATA.daily.filter(d=>weekNo(d.date)===week&&typeof d.weightKg==='number');
+ for(const w of normalized){const ds=dailyForWeek(w.week);w.weightKg.n=ds.length||w.weightKg.n;w.reportedDays=ds.length||w.reportedDays;for(const [field,key] of [['sleepH','sleepH'],['waterMl','waterMl'],['proteinG','proteinG']]){const vals=DATA.daily.filter(d=>weekNo(d.date)===w.week&&typeof d[key]==='number').map(d=>d[key]);if(vals.length){w[field]={avg:vals.reduce((a,b)=>a+b,0)/vals.length,n:vals.length}}}}
+ DATA.weeks.splice(0,DATA.weeks.length,...normalized.sort((a,b)=>a.week-b.week));
  for(const k of Object.keys(byWeek))delete byWeek[k];
  DATA.weeks.forEach(w=>byWeek[w.week]=w);
  for(let i=1;i<DATA.weeks.length;i++){const a=DATA.weeks[i-1],b=DATA.weeks[i];b.vsPrevWeek={deltaKg:b.weightKg.avg-a.weightKg.avg,comparable:!a.excludeFromFatLoss&&!b.excludeFromFatLoss&&b.week===a.week+1}}
@@ -621,9 +624,9 @@ async function loadRealData(user){
  DATA.bodyComposition.splice(0,DATA.bodyComposition.length,...all.bodyComposition.filter(x=>!/診所|clinic|inbody/i.test(String(x.source||x.deviceModel||''))).map(x=>({date:x.date,id:x.id,instrument:x.source||x.deviceModel||'家用設備',weightKg:numeric(x,'weightKg'),smmKg:numeric(x,'skeletalMuscleKg'),bodyFatPct:numeric(x,'bodyFatPct'),verified:x.valid!==false})));
  legacyMedical=[...all.labs.map(x=>({id:'lab-'+x.id,data:{...x,type:'檢驗'}})),...all.bodyComposition.filter(x=>/診所|clinic|inbody/i.test(String(x.source||x.deviceModel||''))).map(x=>({id:'clinic-'+x.id,data:{...x,type:'診所 InBody'}}))];
  dataThrough=DATA.daily.map(d=>d.date).sort().at(-1)||'';
- DATA.lastSync.finishedAt=new Date().toISOString();
+ DATA.lastSync.finishedAt=null;
  DATA.lastSync.readBack.expected=all.daily.length+all.weeks.length+all.bodyComposition.length+all.labs.length;
- DATA.lastSync.readBack.matched=DATA.lastSync.readBack.expected;
+ DATA.lastSync.readBack.matched=0;
  if(!current){document.querySelector('#v-week').innerHTML='<section class="panel"><h2>尚無週報</h2><p>Firestore 尚無可用的週報資料，請先核對資料匯入狀態。</p></section>';renderSync();renderMedicalLocked();route();return;}
  selectedWeek=current.week;renderSync();renderWeek();renderTrend();renderBody();renderMedicalLocked();route();
 }
