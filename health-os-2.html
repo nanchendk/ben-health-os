@@ -386,7 +386,7 @@ function renderWeek() {
   for (let i = 0; i < 7; i++) { const d = addDays(start, i); if (d <= dataThrough && typeof dailyMap[d]?.weightKg !== 'number') missing.push(d); }
   if (w.trainingReportedDays && w.trainingDays < T.trainingPerWeek) notes.push([`本週重訓 ${w.trainingDays} 次，還差 ${T.trainingPerWeek - w.trainingDays} 次`, `目標每週 ${T.trainingPerWeek} 次；本週含今天還剩 ${remaining} 天。`]);
   if (w.proteinReportedDays) notes.push([`蛋白質 ${w.proteinReportedDays} 天中有 ${w.proteinTargetHitDays} 天達 ${T.proteinMinG} g`, `日均 ${fmt(w.proteinG.avg, 0)} g${w.proteinG.includesEstimate ? '，含估算值' : ''}；目標 ${T.proteinMinG}–${T.proteinMaxG} g。`]);
-  if (missing.length) notes.push([`${missing.map((d) => `${md(d)}（${wd(d)}）`).join('、')} 沒有體重紀錄`, `週平均以 ${w.weightKg.n} 天計算，未回報的日子不算進去。`]);
+  if (missing.length) notes.push([`${missing.map((d) => `${md(d)}（${wd(d)}）`).join('、')} 在 Firestore 缺少每日體重`, w.weightKg.historicalOfficial ? `本週 ${fmt(w.weightKg.avg,2)} kg 採歷史正式結案平均，不是以目前 Firestore ${w.reportedDays} 天重新計算；請勿將資料庫缺筆誤判為當天未回報。` : `目前週平均以 ${w.weightKg.n} 天計算，缺少的每日紀錄未納入。`]);
   if (w.waterMl.n > 0 && w.waterMl.n < w.reportedDays) notes.push([`飲水只有 ${w.waterMl.n} 天有紀錄`, `有紀錄的日均 ${fmt(w.waterMl.avg, 0)} ml，紀錄天數太少，暫不判讀。`]);
 
   const dots = Array.from({ length: 7 }, (_, i) => {
@@ -404,7 +404,7 @@ function renderWeek() {
   <div class="stack">
     <div>
       <h1 id="h-week">第 ${w.week} 週</h1>
-      <p class="sub">${md(start)}（${wd(start)}）到 ${md(end)}（${wd(end)}），${w.status==='closed'?'已結案':'進行中'}，已有 ${w.weightKg.n} 天體重紀錄</p>
+      <p class="sub">${md(start)}（${wd(start)}）到 ${md(end)}（${wd(end)}），${w.status==='closed'?'已結案':'進行中'}，${w.weightKg.historicalOfficial?'採歷史正式週平均；Firestore '+w.reportedDays+' 天每日紀錄':'已有 '+w.weightKg.n+' 天體重紀錄'}</p>
     </div>
 
     <section class="hero" aria-label="本週體重">
