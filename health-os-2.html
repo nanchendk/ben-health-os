@@ -397,7 +397,6 @@ function renderWeek() {
   const w = current, T = DATA.config.targets;
   const start = weekStart(w.week), end = addDays(start, 6);
   const prev = byWeek[w.week - 1];
-  const first = weeks[0];
   const dailyMap = Object.fromEntries(DATA.daily.map((d) => [d.date, d]));
   const remaining = Math.max(0, Math.min(7, Math.ceil((toUtc(end) - toUtc(DATA.today)) / DAY + 1)));
 
@@ -417,8 +416,11 @@ function renderWeek() {
     return `<span><b class="${on ? 'on' : future ? 'future' : ''}"></b>${wd(d)}</span>`;
   }).join('');
 
-  const done = first.weightKg.avg - w.weightKg.avg;
-  const total = first.weightKg.avg - DATA.config.targetWeightKg;
+  const startWeight = typeof dailyMap[start]?.weightKg === 'number' ? dailyMap[start].weightKg : w.weightKg.avg;
+  const verifiedStart = typeof dailyMap[start]?.weightKg === 'number';
+  const done = startWeight - w.weightKg.avg;
+  const total = startWeight - DATA.config.targetWeightKg;
+  const progressPct = total > 0 ? Math.max(0, Math.min(100, Math.round(done / total * 100))) : 0;
   const recent = weeks.slice(-9);
 
   $('#v-week').innerHTML = `
@@ -435,8 +437,8 @@ function renderWeek() {
         <div class="delta">${w.vsPrevWeek ? (w.vsPrevWeek.comparable ? `較上週 <strong>${signed(w.vsPrevWeek.deltaKg, 2)} kg</strong>` : '上週為干擾週，不比較') : ''}</div>
       </div>
       <div class="ruler">
-        ${ruler(first.weightKg.avg, w.weightKg.avg, prev?.weightKg.avg, DATA.config.targetWeightKg)}
-        <div class="cap"><span>第 ${first.week} 週起點 ${fmt(first.weightKg.avg)} kg</span><span>已減 ${fmt(done)} kg，還差 ${fmt(w.weightKg.avg - DATA.config.targetWeightKg)} kg（${Math.round(done / total * 100)}%）</span><span>目標 ${fmt(DATA.config.targetWeightKg)} kg</span></div>
+        ${ruler(startWeight, w.weightKg.avg, prev?.weightKg.avg, DATA.config.targetWeightKg)}
+        <div class="cap"><span>第 ${w.week} 週起點 ${fmt(startWeight, 2)} kg${verifiedStart?'':'（以週平均暫代）'}</span><span>${done >= 0 ? '本週減少' : '本週增加'} ${fmt(Math.abs(done), 2)} kg，距目標 ${fmt(Math.max(0, w.weightKg.avg - DATA.config.targetWeightKg), 2)} kg（本週進度 ${progressPct}%）</span><span>目標 ${fmt(DATA.config.targetWeightKg)} kg</span></div>
       </div>
     </section>
 
@@ -495,8 +497,10 @@ function renderTrend() {
       <p class="sub">點選圖上的週次或下方按鈕，查看該週的週報。</p>
     </div>
     <section class="panel" aria-labelledby="h-wchart">
-      <h2 id="h-wchart">週平均體重，第 ${weeks[0].week} 到第 ${current.week} 週</h2>
+      <h2 id="h-wchart">每週平均體重趨勢</h2>
+      <p class="small muted" style="margin:-4px 0 12px">${ymd(weekStart(weeks[0].week))}－${ymd(addDays(weekStart(weeks[weeks.length-1].week),6))} · 共 ${weeks.length} 週紀錄</p>
       <div class="chart" id="trendChart">${weightChart(weeks, { selected: selectedWeek })}</div>
+      <p class="small" style="margin:12px 0 4px">${weeks[0].weightKg.avg > weeks[weeks.length-1].weightKg.avg ? '從 '+fmt(weeks[0].weightKg.avg,2)+' kg 降至 '+fmt(weeks[weeks.length-1].weightKg.avg,2)+' kg，差 '+fmt(weeks[0].weightKg.avg-weeks[weeks.length-1].weightKg.avg,2)+' kg。' : '從 '+fmt(weeks[0].weightKg.avg,2)+' kg 變化至 '+fmt(weeks[weeks.length-1].weightKg.avg,2)+' kg。'}${weeks.some(x=>x.excludeFromFatLoss)?' 疾病、脫水等干擾週只呈現紀錄，不視為正常減脂成果。':''}</p>
       <div class="legend">
         <span><i class="sw"></i>週平均</span>
         <span><i class="sw dash"></i>經過干擾週的變化</span>
@@ -525,9 +529,7 @@ function renderTrend() {
         <div class="m"><span>平均體重</span>${w.weightKg.n ? `<strong>${fmt(w.weightKg.avg, 2)} kg</strong><em>${w.weightKg.historicalOfficial?'正式結案值；目前 Firestore '+w.reportedDays+' 天每日體重':'Firestore '+w.weightKg.n+' 天有紀錄'}</em>` : '<strong class="muted">未回報</strong>'}</div>
         <div class="m"><span>週變化</span>${vs}</div>
         <div class="m"><span>蛋白質</span>${w.proteinG.historical ? `<strong>${esc(w.proteinG.rangeText)}</strong><em>歷史營養估算，非每日實測</em>` : w.proteinG.n ? `<strong>${w.proteinTargetHitDays} / ${w.proteinReportedDays} 天達標</strong><em>日均 ${fmt(w.proteinG.avg, 0)} g${w.proteinG.includesEstimate ? '，含估算' : ''}</em>` : '<strong class="muted">無可靠週平均</strong><em>不能據此認定當週未攝取蛋白質</em>'}</div>
-        <div class="m"><span>重訓</span><strong>${w.trainingHistorical?'0 次（歷史正式紀錄）':w.trainingReportedDays?w.trainingDays+' / '+T.trainingPerWeek+' 次':'無可靠週統計'}</strong><em>${w.trainingHistorical?esc(w.exerciseStatus):w.trainingReportedDays?w.trainingReportedDays+' 天有紀錄':esc(w.exerciseStatus||'未建立可驗證的運動次數')}</em></div>
         <div class="m"><span>睡眠</span>${stat(w.sleepH, 1, '小時')}</div>
-        <div class="m"><span>飲水</span>${stat(w.waterMl, 0, 'ml')}</div>
         <div class="m"><span>熱量</span>${stat(w.kcal, 0, 'kcal')}</div>
         <div class="m"><span>已匯入每日體重筆數</span><strong>${w.reportedDays} / 7 天</strong><em>已匯入的每日體重（含歷史補錄）；未匯入日資料時以正式週報為準</em></div>
       </div>
