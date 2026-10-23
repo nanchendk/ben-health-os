@@ -621,8 +621,11 @@ function applyHistory(w,h){
  const proteinText=note.match(/蛋白質[^\d]{0,16}(\d{1,3})\s*[～~\-–至]\s*(\d{1,3})\s*g(?:\s*\/\s*day|\s*\/\s*日|\s*每天)?/i);
  const parsedRange=(m,unit)=>m?{avg:(+m[1]+ +m[2])/2,n:0,historical:true,rangeText:m[1]+'–'+m[2]+' '+unit,sourceLabel:'由歷史週報文字提取，待核對'}:null;
  const nut=h.nutritionEstimate||{};
- const kcal=range(nut.caloriesKcalPerDayRange,null,'kcal/日')||parsedRange(caloriesText,'kcal/日');
- const protein=range(nut.proteinGPerDayRange,null,'g/日')||parsedRange(proteinText,'g/日');
+ // 歷史週報營養資料優先；只把明確標記為「日均」的區間當成週平均。
+ const statusText=String(h.nutritionStatus||'');
+ const dailyAverage=(label,unit)=>{const re=label==='kcal'?/(?:每日|日均|平均)[^\\n]{0,35}?(\\d{3,4})\\s*[～~–-]\\s*(\\d{3,4})\\s*kcal/i:/(?:蛋白質)[^\\n]{0,20}?(\\d{1,3})\\s*[～~–-]\\s*(\\d{1,3})\\s*g\\s*\\/\\s*day/i;const m=statusText.match(re);return m?{avg:(Number(m[1])+Number(m[2]))/2,n:0,historical:true,rangeText:m[1]+'–'+m[2]+' '+unit,sourceLabel:'歷史週報估算區間'}:null;};
+ const kcal=range(nut.caloriesKcalPerDayRange,null,'kcal/日')||dailyAverage('kcal','kcal/日')||parsedRange(caloriesText,'kcal/日');
+ const protein=range(nut.proteinGPerDayRange,null,'g/日')||dailyAverage('protein','g/日')||parsedRange(proteinText,'g/日');
  if(kcal&&!w.kcal?.n)w.kcal=kcal;
  if(protein&&!w.proteinG?.n)w.proteinG=protein;
  if(!w.kcal?.n&&!w.kcal?.historical&&typeof h.averageEnergyKcalEstimate==='number')w.kcal={avg:h.averageEnergyKcalEstimate,n:0,historical:true,rangeText:h.averageEnergyKcalEstimate+' kcal/日',sourceLabel:'疾病期估算'};
