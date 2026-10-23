@@ -617,8 +617,8 @@ function applyHistory(w,h){
  const range=(a,b,unit)=>Array.isArray(a)&&a.length===2?{avg:(Number(a[0])+Number(a[1]))/2,n:0,historical:true,rangeText:a[0]+'–'+a[1]+' '+unit,sourceLabel:'估算區間'}:null;
  // 舊版 JSON 的 W10/W11 僅將估算區間寫在 nutritionStatus，保守解析明確標記的每日區間。
  const note=String(h.nutritionStatus||'');
- const caloriesText=note.match(/(?:熱量|每日熱量)[^\d]{0,12}(\d{3,4})\s*[～~\-–至]\s*(\d{3,4})\s*kcal\s*\/\s*day/i);
- const proteinText=note.match(/蛋白質[^\d]{0,12}(\d{1,3})\s*[～~\-–至]\s*(\d{1,3})\s*g\s*\/\s*day/i);
+ const caloriesText=note.match(/熱量[^\d]{0,16}(\d{3,4})\s*[～~\-–至]\s*(\d{3,4})\s*kcal(?:\s*\/\s*day|\s*\/\s*日|\s*每天)?/i);
+ const proteinText=note.match(/蛋白質[^\d]{0,16}(\d{1,3})\s*[～~\-–至]\s*(\d{1,3})\s*g(?:\s*\/\s*day|\s*\/\s*日|\s*每天)?/i);
  const parsedRange=(m,unit)=>m?{avg:(+m[1]+ +m[2])/2,n:0,historical:true,rangeText:m[1]+'–'+m[2]+' '+unit,sourceLabel:'由歷史週報文字提取，待核對'}:null;
  const nut=h.nutritionEstimate||{};
  const kcal=range(nut.caloriesKcalPerDayRange,null,'kcal/日')||parsedRange(caloriesText,'kcal/日');
