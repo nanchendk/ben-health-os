@@ -601,9 +601,11 @@ function renderWeek() {
 
   const startWeight = typeof dailyMap[start]?.weightKg === 'number' ? dailyMap[start].weightKg : w.weightKg.avg;
   const verifiedStart = typeof dailyMap[start]?.weightKg === 'number';
-  const done = startWeight - w.weightKg.avg;
+  const completedWeights=DATA.daily.filter(d=>weekNo(d.date)===w.week&&Number.isFinite(d.weightKg)).sort((a,b)=>a.date.localeCompare(b.date));
+  const lastWeight=completedWeights.at(-1)?.weightKg;
+  const done=Number.isFinite(lastWeight)?startWeight-lastWeight:0;
   const total = startWeight - DATA.config.targetWeightKg;
-  const progressPct = total > 0 ? Math.max(0, Math.min(100, Math.round(done / total * 100))) : 0;
+  const progressPct = total > 0 && Number.isFinite(lastWeight) ? Math.max(0, Math.min(100, Math.round(done / total * 100))) : 0;
   const recent = weeks.slice(-9);
 
   $('#v-week').innerHTML = `
@@ -621,13 +623,13 @@ function renderWeek() {
       </div>
       <div class="ruler">
         ${ruler(startWeight, w.weightKg.avg, prev?.weightKg.avg, DATA.config.targetWeightKg)}
-        <div class="cap"><span>第 ${w.week} 週起點 ${fmt(startWeight, 2)} kg${verifiedStart?'':'（以週平均暫代）'}</span><span>${done >= 0 ? '本週減少' : '本週增加'} ${fmt(Math.abs(done), 2)} kg，距目標 ${fmt(Math.max(0, w.weightKg.avg - DATA.config.targetWeightKg), 2)} kg（${w.status==='open'?'暫定進度':'本週進度'} ${progressPct}%）</span><span>目標 ${fmt(DATA.config.targetWeightKg)} kg</span></div>
+        <div class="cap"><span>第 ${w.week} 週起點 ${verifiedStart?fmt(startWeight,2)+' kg':'未核定'}</span><span>${Number.isFinite(lastWeight)?'最新晨重 '+fmt(lastWeight,2)+' kg，較週一起點'+signed(lastWeight-startWeight,2)+' kg':'目前尚無可比較晨重'}；距目標 ${Number.isFinite(lastWeight)?fmt(Math.max(0,lastWeight-DATA.config.targetWeightKg),2):'—'} kg（以最新晨重計）</span><span>目標 ${fmt(DATA.config.targetWeightKg)} kg</span></div>
       </div>
     </section>
 
     <section class="panel" aria-label="每日同步狀態">
       <h2>每日同步狀態｜Firestore 正式紀錄</h2>
-      <p class="small muted">已結案：標示 closed；已入庫：有資料但無結案標記（包括已修訂但未更新 status 的舊紀錄）；尚未同步：當日沒有入庫資料。</p>
+      <p class="small muted">已結案：Firestore 標示 closed；已入庫：有資料但沒有 closed 標記，可能已另行修訂；未同步：該日沒有入庫資料。此處不代表完整審核結果。</p>
       <div class="strip">${Array.from({length:7},(_,i)=>{const date=addDays(start,i),d=dailyMap[date],state=d?(d.status==='closed'?'已結案':'已入庫'):(date>DATA.today?'未到日期':'尚未同步');return '<div class="cell'+(d?'':' none')+'"><span>'+md(date)+'</span><b>'+state+'</b></div>'}).join('')}</div>
     </section>
     <section aria-labelledby="h-goals">
