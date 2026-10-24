@@ -625,6 +625,11 @@ function renderWeek() {
       </div>
     </section>
 
+    <section class="panel" aria-label="每日同步狀態">
+      <h2>每日同步狀態｜Firestore 正式紀錄</h2>
+      <p class="small muted">已同步：Firestore 有當日結案紀錄；待確認：已有紀錄但未標示結案；尚未同步：資料庫未有當日紀錄。僅依資料庫，不推測 ChatGPT 草稿內容。</p>
+      <div class="strip">${Array.from({length:7},(_,i)=>{const date=addDays(start,i),d=dailyMap[date],state=d?(d.status==='closed'?'已同步':'待確認'):(date>DATA.today?'未到日期':'尚未同步');return '<div class="cell'+(d?'':' none')+'"><span>'+md(date)+'</span><b>'+state+'</b></div>'}).join('')}</div>
+    </section>
     <section aria-labelledby="h-goals">
       <h2 id="h-goals">本週健康摘要</h2>
       <div class="mgrid">
@@ -1052,7 +1057,7 @@ async function loadRealData(user){
  const names=['daily','weeks','bodyComposition','labs','weeklyHistorical'];
  const snaps=await Promise.all(names.map(n=>getDocs(collection(db,'users',user.uid,n))));
  const all=Object.fromEntries(names.map((n,i)=>[n,snaps[i].docs.map(d=>({id:d.id,...d.data()}))]));
- DATA.daily.splice(0,DATA.daily.length,...all.daily.filter(x=>/^\d{4}-\d\d-\d\d$/.test(x.date||x.id)).map(x=>({date:x.date||x.id,weightKg:numeric(x,'weightKg'),sleepH:numeric(x,'sleepHours','sleepH'),waterMl:numeric(x,'waterMl'),proteinG:numeric(x,'proteinG'),notes:x.notes||'',estimated:[]})).sort((a,b)=>a.date.localeCompare(b.date)));
+ DATA.daily.splice(0,DATA.daily.length,...all.daily.filter(x=>/^\d{4}-\d\d-\d\d$/.test(x.date||x.id)).map(x=>({date:x.date||x.id,weightKg:numeric(x,'weightKg'),sleepH:numeric(x,'sleepHours','sleepH'),waterMl:numeric(x,'waterMl'),proteinG:numeric(x,'proteinG'),notes:x.notes||'',status:x.status||'',estimated:[]})).sort((a,b)=>a.date.localeCompare(b.date)));
  // 歷史日資料與即時 daily 分離保存，缺筆才補顯示，不覆蓋當前資料庫。
  const historicalDaily=all.weeklyHistorical.flatMap(h=>Array.isArray(h.historicalDaily)?h.historicalDaily:[]);
  const existingDates=new Set(DATA.daily.map(d=>d.date));
@@ -1086,6 +1091,18 @@ async function loadRealData(user){
      current.vsPrevWeek={deltaKg:current.weightKg.avg-prior.weightKg.avg,comparable:!prior.excludeFromFatLoss&&!current.excludeFromFatLoss};
    }
  }else current=DATA.weeks.at(-1);
+ // 對當前週（含未建立 weeks 文件的進行中週）以已同步每日數值重新統計。
+ // null / 缺漏不列入分母，且絕不把營養估算當成正式實測。
+ if(current){
+   const thisWeek=DATA.daily.filter(d=>weekNo(d.date)===current.week);
+   for(const [field,key] of [['sleepH','sleepH'],['waterMl','waterMl'],['proteinG','proteinG']]){
+     if(!current[field]?.historical){
+       const values=thisWeek.map(d=>d[key]).filter(Number.isFinite);
+       current[field]={avg:values.length?values.reduce((a,b)=>a+b,0)/values.length:undefined,n:values.length};
+     }
+   }
+   current.reportedDays=thisWeek.filter(d=>Number.isFinite(d.weightKg)).length;
+ }
  DATA.bodyComposition.splice(0,DATA.bodyComposition.length,...all.bodyComposition.map(x=>({date:x.date||(/^\d{4}-\d{2}-\d{2}/.test(x.id)?x.id.slice(0,10):''),id:x.id,instrument:x.instrument||x.deviceModel||x.source||'家用設備',weightKg:numeric(x,'weightKg','weight'),smmKg:numeric(x,'skeletalMuscleKg','smmKg','muscleMassKg'),bodyFatPct:numeric(x,'bodyFatPct','fatPercent'),bodyFatKg:numeric(x,'bodyFatKg','fatMassKg'),visceralFatLevel:numeric(x,'visceralFatLevel'),verified:x.verified===true,excluded:x.excluded===true,excludeReason:x.excludeReason||'',interference:x.interference||[]})));
  legacyMedical=[...all.labs.map(x=>({id:'lab-'+x.id,data:{...x,type:'檢驗'}})),...all.bodyComposition.filter(x=>/診所|clinic|inbody/i.test(String(x.source||x.deviceModel||''))).map(x=>({id:'clinic-'+x.id,data:{...x,type:'診所 InBody'}}))];
  dataThrough=DATA.daily.map(d=>d.date).sort().at(-1)||'';
