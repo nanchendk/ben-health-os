@@ -615,26 +615,26 @@ function renderWeek() {
 
     <section class="hero" aria-label="本週體重">
       <div>
-        <div class="lbl">本週平均體重</div>
+        <div class="lbl">${w.status==='open'?'本週截至目前平均體重（暫定）':'本週正式平均體重'}</div>
         <div class="big">${fmt(w.weightKg.avg, 2)}<small>kg</small></div>
-        <div class="delta">${w.vsPrevWeek ? (w.vsPrevWeek.comparable ? `較上週 <strong>${signed(w.vsPrevWeek.deltaKg, 2)} kg</strong>` : '上週為干擾週，不比較') : ''}</div>
+        <div class="delta">${w.vsPrevWeek ? (w.vsPrevWeek.comparable ? `較上週${w.status==='open'?'正式平均（暫時比較）':''} <strong>${signed(w.vsPrevWeek.deltaKg, 2)} kg</strong>` : '上週為干擾週，不比較') : ''}</div>
       </div>
       <div class="ruler">
         ${ruler(startWeight, w.weightKg.avg, prev?.weightKg.avg, DATA.config.targetWeightKg)}
-        <div class="cap"><span>第 ${w.week} 週起點 ${fmt(startWeight, 2)} kg${verifiedStart?'':'（以週平均暫代）'}</span><span>${done >= 0 ? '本週減少' : '本週增加'} ${fmt(Math.abs(done), 2)} kg，距目標 ${fmt(Math.max(0, w.weightKg.avg - DATA.config.targetWeightKg), 2)} kg（本週進度 ${progressPct}%）</span><span>目標 ${fmt(DATA.config.targetWeightKg)} kg</span></div>
+        <div class="cap"><span>第 ${w.week} 週起點 ${fmt(startWeight, 2)} kg${verifiedStart?'':'（以週平均暫代）'}</span><span>${done >= 0 ? '本週減少' : '本週增加'} ${fmt(Math.abs(done), 2)} kg，距目標 ${fmt(Math.max(0, w.weightKg.avg - DATA.config.targetWeightKg), 2)} kg（${w.status==='open'?'暫定進度':'本週進度'} ${progressPct}%）</span><span>目標 ${fmt(DATA.config.targetWeightKg)} kg</span></div>
       </div>
     </section>
 
     <section class="panel" aria-label="每日同步狀態">
       <h2>每日同步狀態｜Firestore 正式紀錄</h2>
-      <p class="small muted">已結案：Firestore 明確標示 closed；已入庫：有資料但無結案標記（不推定未授權）；尚未同步：資料庫未有當日紀錄。</p>
-      <div class="strip">${Array.from({length:7},(_,i)=>{const date=addDays(start,i),d=dailyMap[date],state=d?(d.status==='closed'?'已結案':'已入庫'):(date>DATA.today?'未到日期':'尚未同步');return '<div class="cell'+(d?'':' none')+'"><span>'+md(date)+'</span><b>'+state+'</b></div>'}).join('')}</div>
+      <p class="small muted">已核對修訂：已有修訂歷史；已結案：標示 closed；已入庫：有資料但無結案標記；尚未同步：當日沒有入庫資料。</p>
+      <div class="strip">${Array.from({length:7},(_,i)=>{const date=addDays(start,i),d=dailyMap[date],state=d?(d.revised?'已核對修訂':d.status==='closed'?'已結案':'已入庫'):(date>DATA.today?'未到日期':'尚未同步');return '<div class="cell'+(d?'':' none')+'"><span>'+md(date)+'</span><b>'+state+'</b></div>'}).join('')}</div>
     </section>
     <section aria-labelledby="h-goals">
       <h2 id="h-goals">本週健康摘要</h2>
       <div class="mgrid">
-        <div class="m"><span>平均體重</span><strong>${fmt(w.weightKg.avg, 2)} kg</strong><em>${w.weightKg.historicalOfficial?'歷史正式結案平均':w.weightKg.n+' 天體重紀錄的平均'}</em></div>
-        <div class="m"><span>週變化</span>${w.vsPrevWeek ? (w.vsPrevWeek.comparable ? `<strong>${signed(w.vsPrevWeek.deltaKg, 2)} kg</strong><em>與第 ${w.week-1} 週相比</em>` : `<strong>不比較</strong><em>${w.excludeFromFatLoss?'本週為干擾週':'前週為干擾週'}</em>`) : '<strong class="muted">—</strong><em>沒有可比較的前週</em>'}</div>
+        <div class="m"><span>${w.status==='open'?'目前平均體重（非完整週）':'平均體重'}</span><strong>${fmt(w.weightKg.avg, 2)} kg</strong><em>${w.weightKg.historicalOfficial?'歷史正式結案平均':w.weightKg.n+' 天體重紀錄的平均'}</em></div>
+        <div class="m"><span>週變化</span>${w.vsPrevWeek ? (w.vsPrevWeek.comparable ? `<strong>${signed(w.vsPrevWeek.deltaKg, 2)} kg</strong><em>${w.status==='open'?'暫時比較，非完整週結算':'與第 '+(w.week-1)+' 週相比'}</em>` : `<strong>不比較</strong><em>${w.excludeFromFatLoss?'本週為干擾週':'前週為干擾週'}</em>`) : '<strong class="muted">—</strong><em>沒有可比較的前週</em>'}</div>
         <div class="m"><span>蛋白質</span>${w.proteinG.historical ? `<strong>${esc(w.proteinG.rangeText)}</strong><em>歷史營養估算，非每日實測</em>` : w.proteinG.n ? `<strong>${fmt(w.proteinG.avg, 0)} g/日</strong><em>${w.proteinReportedDays} 天紀錄${w.proteinG.includesEstimate?'，含估算':''}</em>` : '<strong class="muted">無可靠週平均</strong><em>不代表當週未攝取</em>'}</div>
         <div class="m"><span>睡眠</span>${w.sleepH.historical ? `<strong>${esc(w.sleepH.rangeText)}</strong><em>歷史結案估算</em>` : w.sleepH.n ? `<strong>${fmt(w.sleepH.avg, 1)} 小時</strong><em>${w.sleepH.n} 天有紀錄</em>` : '<strong class="muted">未回報</strong><em>無可靠睡眠平均</em>'}</div>
         <div class="m"><span>熱量</span>${w.kcal.historical ? `<strong>${esc(w.kcal.rangeText)}</strong><em>歷史估算，非每日實測</em>` : w.kcal.n ? `<strong>${fmt(w.kcal.avg, 0)} kcal/日</strong><em>${w.kcal.n} 天有紀錄${w.kcal.includesEstimate?'，含估算':''}</em>` : '<strong class="muted">無可靠週平均</strong><em>餐點紀錄不代表七日完整攝取</em>'}</div>
@@ -1054,10 +1054,10 @@ document.querySelector('#historyImportBtn').onclick=async()=>{
 };
 
 async function loadRealData(user){
- const names=['daily','weeks','bodyComposition','labs','weeklyHistorical'];
+ const names=['daily','weeks','bodyComposition','labs','weeklyHistorical','dailyRevisions'];
  const snaps=await Promise.all(names.map(n=>getDocs(collection(db,'users',user.uid,n))));
  const all=Object.fromEntries(names.map((n,i)=>[n,snaps[i].docs.map(d=>({id:d.id,...d.data()}))]));
- DATA.daily.splice(0,DATA.daily.length,...all.daily.filter(x=>/^\d{4}-\d\d-\d\d$/.test(x.date||x.id)).map(x=>({date:x.date||x.id,weightKg:numeric(x,'weightKg'),sleepH:numeric(x,'sleepHours','sleepH'),waterMl:numeric(x,'waterMl'),proteinG:numeric(x,'proteinG'),notes:x.notes||'',status:x.status||'',estimated:[]})).sort((a,b)=>a.date.localeCompare(b.date)));
+ DATA.daily.splice(0,DATA.daily.length,...all.daily.filter(x=>/^\d{4}-\d\d-\d\d$/.test(x.date||x.id)).map(x=>({date:x.date||x.id,weightKg:numeric(x,'weightKg'),sleepH:numeric(x,'sleepHours','sleepH'),waterMl:numeric(x,'waterMl'),proteinG:numeric(x,'proteinG'),notes:x.notes||'',status:x.status||'',revised:all.dailyRevisions.some(rev=>rev.date===(x.date||x.id)),estimated:[]})).sort((a,b)=>a.date.localeCompare(b.date)));
  // 歷史日資料與即時 daily 分離保存，缺筆才補顯示，不覆蓋當前資料庫。
  const historicalDaily=all.weeklyHistorical.flatMap(h=>Array.isArray(h.historicalDaily)?h.historicalDaily:[]);
  const existingDates=new Set(DATA.daily.map(d=>d.date));
