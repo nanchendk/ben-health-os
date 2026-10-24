@@ -627,8 +627,8 @@ function renderWeek() {
 
     <section class="panel" aria-label="每日同步狀態">
       <h2>每日同步狀態｜Firestore 正式紀錄</h2>
-      <p class="small muted">已同步：Firestore 有當日結案紀錄；待確認：已有紀錄但未標示結案；尚未同步：資料庫未有當日紀錄。僅依資料庫，不推測 ChatGPT 草稿內容。</p>
-      <div class="strip">${Array.from({length:7},(_,i)=>{const date=addDays(start,i),d=dailyMap[date],state=d?(d.status==='closed'?'已同步':'待確認'):(date>DATA.today?'未到日期':'尚未同步');return '<div class="cell'+(d?'':' none')+'"><span>'+md(date)+'</span><b>'+state+'</b></div>'}).join('')}</div>
+      <p class="small muted">已結案：Firestore 明確標示 closed；已入庫：有資料但無結案標記（不推定未授權）；尚未同步：資料庫未有當日紀錄。</p>
+      <div class="strip">${Array.from({length:7},(_,i)=>{const date=addDays(start,i),d=dailyMap[date],state=d?(d.status==='closed'?'已結案':'已入庫'):(date>DATA.today?'未到日期':'尚未同步');return '<div class="cell'+(d?'':' none')+'"><span>'+md(date)+'</span><b>'+state+'</b></div>'}).join('')}</div>
     </section>
     <section aria-labelledby="h-goals">
       <h2 id="h-goals">本週健康摘要</h2>
