@@ -381,7 +381,7 @@ body{background:radial-gradient(ellipse at 85% 4%,#f6e9d9 0%,transparent 42%),li
     </div>
   </div>
 </header>
-<main class="wrap"><section id="historicalImport" class="panel import-panel" hidden><details><summary><span class="import-icon" aria-hidden="true">▤</span><span class="import-copy"><strong>歷史營養與睡眠資料補齊</strong><small>私人歷史 JSON · 核對後匯入 Firestore</small></span><span class="import-action">展開匯入 ▾</span></summary><div class="import-content"><p class="small muted">可匯入先前整理的 Week 7～14 歷史 JSON。檔案只在本機讀取，核對後寫入登入帳號的私人 Firestore；不會提交到公開 GitHub，也不覆蓋既有週報。</p><input id="historyFile" type="file" accept=".json,application/json"><button type="button" id="historyImportBtn" class="ghost">核對並匯入歷史週報</button><p id="historyImportMsg" role="status" class="small"></p></div></details></section>
+<main class="wrap"><section id="historicalImport" class="panel import-panel" hidden><details><summary><span class="import-icon" aria-hidden="true">▤</span><span class="import-copy"><strong>歷史營養與睡眠資料補齊</strong><small>私人歷史 JSON · 核對後匯入 Firestore</small></span><span class="import-action">展開匯入 ▾</span></summary><div class="import-content"><p class="small muted">可匯入 Week 7～14 歷史 JSON，或「週報＋體組成」整合 JSON；已存在的週報和體組成 ID 會跳過。檔案只在本機讀取，核對後才寫入私人 Firestore，不提交公開 GitHub。</p><input id="historyFile" type="file" accept=".json,application/json"><button type="button" id="historyImportBtn" class="ghost">核對並匯入週報／體組成</button><p id="historyImportMsg" role="status" class="small"></p></div></details></section>
   <section class="view" id="v-week" aria-labelledby="h-week"></section>
   <section class="view" id="v-trend" aria-labelledby="h-trend" hidden></section>
   <section class="view" id="v-body" aria-labelledby="h-body" hidden></section>
@@ -737,17 +737,17 @@ function renderTrend() {
 let selectedBodyInstrument=null;
 function renderBody() {
  const groups={};
- DATA.bodyComposition.filter(b=>b.date&&typeof b.bodyFatPct==='number'&&typeof b.smmKg==='number').forEach(b=>(groups[b.instrument]??=[]).push(b));
+ DATA.bodyComposition.filter(b=>b.date&&typeof b.smmKg==='number'&&typeof b.weightKg==='number').forEach(b=>(groups[b.instrument]??=[]).push(b));
  const entries=Object.entries(groups).sort(([a],[b])=>a.includes('InBody')?-1:b.includes('InBody')?1:a.localeCompare(b));
  if(!entries.length){$('#v-body').innerHTML='<div class="stack"><h1 id="h-body">身體組成</h1><section class="panel">尚無可顯示的身體組成紀錄；請先核對 Firestore 資料。</section></div>';return;}
  if(!entries.some(([key])=>key===selectedBodyInstrument))selectedBodyInstrument=entries[0][0];
  const tabs=entries.map(([key])=>'<button type="button" class="switch-tab" role="tab" data-instrument="'+esc(key)+'" aria-selected="'+(key===selectedBodyInstrument)+'">'+esc(key)+'</button>').join('');
  const [inst,rows]=entries.find(([key])=>key===selectedBodyInstrument);
  rows.sort((a,b)=>a.date.localeCompare(b.date));
- const last=rows[rows.length-1],unverified=rows.filter(r=>!r.verified).length;
- const charts=rows.length>=2?'<div class="split" style="margin-top:14px"><div><h3 class="small muted">體脂率（%）</h3><div class="chart">'+lineChart(rows.map(r=>({d:r.date,v:r.bodyFatPct,ill:!!r.interference})),{label:inst+' 體脂率趨勢'})+'</div></div><div><h3 class="small muted">骨骼肌（kg）</h3><div class="chart">'+lineChart(rows.map(r=>({d:r.date,v:r.smmKg,ill:!!r.interference})),{label:inst+' 骨骼肌趨勢'})+'</div></div></div>':'<p class="small muted" style="margin-top:14px">目前只有一次量測，累積兩次以上才會繪製趨勢，不與其他設備混算。</p>';
- const metrics='<div class="mgrid" style="margin-top:14px"><div class="m"><span>體重</span><strong>'+fmt(last.weightKg)+' kg</strong></div><div class="m"><span>骨骼肌</span><strong>'+fmt(last.smmKg)+' kg</strong>'+(rows.length>1?'<em>較首次 '+signed(last.smmKg-rows[0].smmKg)+' kg</em>':'')+'</div><div class="m"><span>體脂率</span><strong>'+fmt(last.bodyFatPct)+' %</strong>'+(rows.length>1?'<em>較首次 '+signed(last.bodyFatPct-rows[0].bodyFatPct)+' %</em>':'')+'</div><div class="m"><span>內臟脂肪</span>'+(last.visceralFatLevel!==undefined?'<strong>'+esc(last.visceralFatLevel)+' 級</strong>':'<strong class="muted">未量測</strong><em>這台設備沒有此項</em>')+'</div></div>';
- $('#v-body').innerHTML='<div class="stack"><div><h1 id="h-body">身體組成</h1><p class="sub">依設備切換觀看，只比較同一台設備的有效紀錄。</p></div><nav class="switch-tabs" role="tablist" aria-label="身體組成設備">'+tabs+'</nav><section class="panel" role="tabpanel"><div class="unlockbar"><div><h2>'+esc(inst)+'</h2><span class="small muted">'+rows.length+' 次量測，最近一次 '+ymd(last.date)+(last.location?'，'+esc(last.location):'')+'</span></div><span class="badge '+(unverified?'todo':'ok')+'">'+(unverified?unverified+' 筆待核對原始報告':'已核對')+'</span></div>'+metrics+charts+'</section></div>';
+ const valid=rows.filter(r=>!r.excluded);const last=valid.at(-1)||rows.at(-1),unverified=rows.filter(r=>!r.verified).length;const fatTrend=valid.filter(r=>typeof r.bodyFatPct==='number');const muscleTrend=valid.filter(r=>typeof r.smmKg==='number');
+ const charts=(fatTrend.length>=2||muscleTrend.length>=2)?'<div class="split" style="margin-top:14px"><div><h3 class="small muted">體脂率（%）</h3><div class="chart">'+(fatTrend.length>=2?lineChart(fatTrend.map(r=>({d:r.date,v:r.bodyFatPct})),{label:inst+' 體脂率趨勢'}):'<p class="muted">有效體脂率紀錄不足兩筆。</p>')+'</div></div><div><h3 class="small muted">骨骼肌（kg）</h3><div class="chart">'+(muscleTrend.length>=2?lineChart(muscleTrend.map(r=>({d:r.date,v:r.smmKg})),{label:inst+' 骨骼肌趨勢'}):'<p class="muted">有效骨骼肌紀錄不足兩筆。</p>')+'</div></div></div>':'<p class="small muted" style="margin-top:14px">此設備有效量測不足兩筆，暫不繪製趨勢。</p>';
+ const metrics='<div class="mgrid" style="margin-top:14px"><div class="m"><span>體重</span><strong>'+fmt(last.weightKg)+' kg</strong></div><div class="m"><span>骨骼肌</span><strong>'+fmt(last.smmKg)+' kg</strong>'+(valid.length>1?'<em>較首次有效量測 '+signed(last.smmKg-valid[0].smmKg)+' kg</em>':'')+'</div><div class="m"><span>體脂率</span><strong>'+fmt(last.bodyFatPct)+' %</strong>'+(fatTrend.length>1&&typeof last.bodyFatPct==='number'?'<em>較首次有效量測 '+signed(last.bodyFatPct-fatTrend[0].bodyFatPct)+' %</em>':'')+'</div><div class="m"><span>內臟脂肪</span>'+(last.visceralFatLevel!==undefined?'<strong>'+esc(last.visceralFatLevel)+' 級</strong>':'<strong class="muted">未量測</strong><em>這台設備沒有此項</em>')+'</div></div>';
+ $('#v-body').innerHTML='<div class="stack"><div><h1 id="h-body">身體組成</h1><p class="sub">依設備切換觀看，只比較同一台設備的有效紀錄。</p></div><nav class="switch-tabs" role="tablist" aria-label="身體組成設備">'+tabs+'</nav><section class="panel" role="tabpanel"><div class="unlockbar"><div><h2>'+esc(inst)+'</h2><span class="small muted">'+rows.length+' 次原始量測（'+valid.length+' 筆未排除），最近有效量測 '+ymd(last.date)+(last.location?'，'+esc(last.location):'')+'</span></div><span class="badge '+(unverified?'todo':'ok')+'">'+(unverified?unverified+' 筆待核對原始報告':'已核對')+'</span></div>'+metrics+charts+'<p class="small muted" style="margin-top:14px">已排除 '+(rows.length-valid.length)+' 筆疾病／水分或量測時間干擾紀錄；原始資料保留、不列入趨勢。未核對原始報告的數據僅供參考。</p></section></div>';
  document.querySelectorAll('#v-body [data-instrument]').forEach(button=>button.onclick=()=>{selectedBodyInstrument=button.dataset.instrument;renderBody()});
 }
 
@@ -1019,13 +1019,34 @@ document.querySelector('#historyImportBtn').onclick=async()=>{
   if(payload.format!=='ben-health-os-import-v2'||!Array.isArray(payload.weeks))throw Error('格式不是預期的歷史週報 JSON');
   const rows=payload.weeks.filter(x=>{const n=historyWeekNo(x);return n>=7&&n<=14});
   if(rows.length!==8||new Set(rows.map(historyWeekNo)).size!==8)throw Error('需要完整且不重複的 Week 7～14 八週摘要');
-  const message=rows.map(x=>{const n=historyWeekNo(x);return 'W'+n+': '+(x.nutritionStatus||'無營養摘要')}).join('\n');
-  if(!confirm('將 8 週歷史摘要寫入私人 Firestore 的 weeklyHistorical 集合，不覆蓋既有 weeks、daily。\n\n'+message+'\n\n確定匯入？')){status.textContent='已取消';return}
-  for(const x of rows){const n=historyWeekNo(x);const historicalDaily=(Array.isArray(payload.daily)?payload.daily:[]).filter(d=>/^\d{4}-\d\d-\d\d$/.test(d.date||'')&&weekNo(d.date)===n);await setDoc(doc(db,'users',activeUser.uid,'weeklyHistorical','W'+String(n).padStart(2,'0')),{...x,week:n,historicalDaily,source:'user-verified-historical-json',importedAt:new Date().toISOString()})}
-  status.textContent='已寫入 8 週私人歷史摘要，正在重新載入並核對。';
+  const body=payload.bodyComposition===undefined?[]:payload.bodyComposition;
+  if(!Array.isArray(body))throw Error('bodyComposition 應為陣列');
+  if(body.length>200)throw Error('體組成紀錄超過 200 筆，請先核對');
+  const bodyIDs=new Set();
+  for(const item of body){
+   if(!item||typeof item.id!=='string'||!/^[-a-zA-Z0-9_]{3,90}$/.test(item.id)||!/^\d{4}-\d{2}-\d{2}$/.test(item.date)||!item.instrument||typeof item.weightKg!=='number')throw Error('體組成資料缺少有效 id、日期、設備或體重');
+   if(bodyIDs.has(item.id))throw Error('體組成出現重複紀錄 ID：'+item.id);
+   bodyIDs.add(item.id);
+  }
+  const excluded=body.filter(x=>x.excluded===true).length;
+  const summary='Week 7～14：8 週；身體組成：'+body.length+' 筆（其中 '+excluded+' 筆已標記排除，保留原始紀錄但不畫進趨勢）。\n已存在的週報與體組成 ID 都會跳過，不覆蓋。';
+  if(!confirm('確認將下列私人資料寫入 Firestore？\n\n'+summary+'\n\n資料不會寫入公開 GitHub。')){status.textContent='已取消';return}
+  let weekNew=0,weekSkip=0,bodyNew=0,bodySkip=0;
+  for(const x of rows){
+   const n=historyWeekNo(x), ref=doc(db,'users',activeUser.uid,'weeklyHistorical','W'+String(n).padStart(2,'0'));
+   if((await getDoc(ref)).exists()){weekSkip++;continue}
+   const historicalDaily=(Array.isArray(payload.daily)?payload.daily:[]).filter(d=>/^\d{4}-\d\d-\d\d$/.test(d.date||'')&&weekNo(d.date)===n);
+   await setDoc(ref,{...x,week:n,historicalDaily,source:'user-verified-historical-json',importedAt:new Date().toISOString()});weekNew++;
+  }
+  for(const item of body){
+   const ref=doc(db,'users',activeUser.uid,'bodyComposition',item.id);
+   if((await getDoc(ref)).exists()){bodySkip++;continue}
+   await setDoc(ref,{...item,verified:item.verified===true,excluded:item.excluded===true,source:'historical-body-composition-zip',importedAt:new Date().toISOString()});bodyNew++;
+  }
+  status.textContent='匯入成功：週報新增 '+weekNew+'、跳過 '+weekSkip+'；身體組成新增 '+bodyNew+'、跳過 '+bodySkip+'。正在刷新。';
   await loadRealData(activeUser);
-  const matched=DATA.weeks.filter(w=>w.week>=7&&w.week<=14);const count=matched.filter(w=>w.kcal?.historical||w.kcal?.n).length;status.textContent='匯入完成：8 週摘要與歷史每日資料已寫入；'+count+'/8 週有可顯示的熱量定量資料，其餘僅有文字或缺漏。請逐週查看來源說明。';
- }catch(e){status.textContent='匯入失敗：'+(e.code||e.message)}
+  status.textContent='匯入完成：週報新增 '+weekNew+'／跳過 '+weekSkip+'；身體組成新增 '+bodyNew+'／跳過 '+bodySkip+'。請切換「身體組成」查看。';
+ }catch(e){status.textContent='匯入未完成：'+(e.code||e.message)+'。可以重新選取同一份檔案，已存在的紀錄不會覆蓋。'}
  finally{btn.disabled=false}
 };
 
@@ -1052,7 +1073,7 @@ async function loadRealData(user){
  DATA.weeks.forEach(w=>byWeek[w.week]=w);
  for(let i=1;i<DATA.weeks.length;i++){const a=DATA.weeks[i-1],b=DATA.weeks[i];b.vsPrevWeek={deltaKg:b.weightKg.avg-a.weightKg.avg,comparable:!a.excludeFromFatLoss&&!b.excludeFromFatLoss&&b.week===a.week+1}}
  current=DATA.weeks.at(-1);
- DATA.bodyComposition.splice(0,DATA.bodyComposition.length,...all.bodyComposition.map(x=>({date:x.date,id:x.id,instrument:x.deviceModel||x.instrument||x.source||'家用設備',weightKg:numeric(x,'weightKg'),smmKg:numeric(x,'skeletalMuscleKg','smmKg'),bodyFatPct:numeric(x,'bodyFatPct'),visceralFatLevel:numeric(x,'visceralFatLevel'),verified:x.verified===true||x.valid===true})));
+ DATA.bodyComposition.splice(0,DATA.bodyComposition.length,...all.bodyComposition.map(x=>({date:x.date,id:x.id,instrument:x.instrument||x.deviceModel||x.source||'家用設備',weightKg:numeric(x,'weightKg'),smmKg:numeric(x,'skeletalMuscleKg','smmKg'),bodyFatPct:numeric(x,'bodyFatPct'),bodyFatKg:numeric(x,'bodyFatKg','fatMassKg'),visceralFatLevel:numeric(x,'visceralFatLevel'),verified:x.verified===true,excluded:x.excluded===true,excludeReason:x.excludeReason||'',interference:x.interference||[]})));
  legacyMedical=[...all.labs.map(x=>({id:'lab-'+x.id,data:{...x,type:'檢驗'}})),...all.bodyComposition.filter(x=>/診所|clinic|inbody/i.test(String(x.source||x.deviceModel||''))).map(x=>({id:'clinic-'+x.id,data:{...x,type:'診所 InBody'}}))];
  dataThrough=DATA.daily.map(d=>d.date).sort().at(-1)||'';
  DATA.lastSync.finishedAt=null;
