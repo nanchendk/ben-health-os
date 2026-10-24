@@ -455,7 +455,7 @@ function weightChart(list, { w = 680, h = 240, selected = null, mini = false } =
 // 本週主視覺：起點到目標的刻度尺
 function ruler(start, now, prev, target) {
   const w = 520, h = 84, L = 10, R = 10;
-  const X = (v) => L + (start - v) / (start - target) * (w - L - R);
+  const X = (v) => L + Math.max(0,Math.min(1,(start - v) / Math.max(.01,start - target))) * (w - L - R);
   let s = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="從起點 ${fmt(start)} 公斤到目標 ${fmt(target)} 公斤，目前 ${fmt(now, 2)} 公斤">`;
   s += `<line x1="${L}" x2="${w - R}" y1="46" y2="46" stroke="var(--hero-line)" stroke-width="2"/>`;
   s += `<line x1="${L}" x2="${X(now)}" y1="46" y2="46" stroke="var(--hero-ink)" stroke-width="4" stroke-linecap="round"/>`;
@@ -510,6 +510,22 @@ function renderWeek() {
   if (w.proteinReportedDays) notes.push([`蛋白質 ${w.proteinReportedDays} 天中有 ${w.proteinTargetHitDays} 天達 ${T.proteinMinG} g`, `日均 ${fmt(w.proteinG.avg, 0)} g${w.proteinG.includesEstimate ? '，含估算值' : ''}；目標 ${T.proteinMinG}–${T.proteinMaxG} g。`]);
   if (missing.length) notes.push([`${missing.map((d) => `${md(d)}（${wd(d)}）`).join('、')} 在 Firestore 缺少每日體重`, w.weightKg.historicalOfficial ? `本週 ${fmt(w.weightKg.avg,2)} kg 採歷史正式結案平均，不是以目前 Firestore ${w.reportedDays} 天重新計算；請勿將資料庫缺筆誤判為當天未回報。` : `目前週平均以 ${w.weightKg.n} 天計算，缺少的每日紀錄未納入。`]);
   if (w.waterMl.n > 0 && w.waterMl.n < w.reportedDays) notes.push([`飲水只有 ${w.waterMl.n} 天有紀錄`, `有紀錄的日均 ${fmt(w.waterMl.avg, 0)} ml，紀錄天數太少，暫不判讀。`]);
+  // 從已存在的週報判讀與來源資訊生成提醒，避免出現整塊空白。
+  if (w.interference?.includes('illness') || w.interference?.includes('dehydration')) {
+    notes.unshift(['恢復期體重須謹慎判讀', '本週受疾病或脫水影響，體重變化不應直接計入減脂成果；先觀察身體恢復與正常飲食。']);
+  } else if (w.week===14) {
+    notes.unshift(['持續觀察恢復狀況', '本週為感染後恢復觀察期，飲食與體重以穩定恢復為優先。']);
+  }
+  if ((w.kcal?.historical || w.proteinG?.historical) && w.week >= 7 && w.week <= 14) {
+    notes.push(['營養數字屬歷史估算', w.week===14 ? '第 14 週營養區間根據有紀錄的餐點推算，未證實七日完整攝取，不作為實測值。' : '本週營養資料含歷史估算，應搭配原始餐點紀錄與估算完整性說明判讀。']);
+  }
+  if (w.week===14 && !w.waterMl?.n) {
+    notes.push(['留意日常水分攝取', '恢復期間請留意補水及排便狀況；本週沒有完整飲水數據，不能據此判定攝取量是否不足。']);
+  }
+  if (!notes.length) {
+    notes.push(['維持規律紀錄', '本週暫無具備充分依據的特殊警示；可持續記錄體重、飲食與睡眠，以利後續比較。']);
+  }
+
 
   const dots = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(start, i);
@@ -558,7 +574,7 @@ function renderWeek() {
 
     <div class="split">
       <section class="panel" aria-labelledby="h-notes">
-        <h2 id="h-notes">這週要留意</h2>
+        <h2 id="h-notes">本週健康注意事項</h2>
         <ul class="notes">${notes.map(([a, b]) => `<li><strong>${a}</strong><span class="why">${b}</span></li>`).join('')}</ul>
       </section>
       <section class="panel" aria-labelledby="h-mini">
