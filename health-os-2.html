@@ -195,26 +195,128 @@ td.num,th.num{text-align:right}
   .view{animation:in .18s ease-out}
   @keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 }
+
+/* Ben Health OS 2.0 — warm ivory, sage and natural editorial design */
+:root,:root[data-theme="dark"]{
+ --paper:#f8f7f2;--surface:#f3f4ef;--card:#fffefa;--ink:#17271f;--muted:#56645b;--faint:#768079;
+ --rule:#e1e3d9;--track:#e6e9df;--blue:#365b48;--orange:#975b27;--orange-line:#c18146;
+ --good:#34694f;--shade:#e8efe7;--hero:#eef5ed;--hero-ink:#172d20;--hero-muted:#4a6555;--hero-line:#c7d9c9;
+ color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#f8f7f2;--surface:#f3f4ef;--card:#fffefa;--ink:#17271f;--muted:#56645b;--faint:#768079;--rule:#e1e3d9;--track:#e6e9df;--blue:#365b48;--orange:#975b27;--orange-line:#c18146;--good:#34694f;--shade:#e8efe7;--hero:#eef5ed;--hero-ink:#172d20;--hero-muted:#4a6555;--hero-line:#c7d9c9;color-scheme:light}}
+body{background:radial-gradient(ellipse at 86% 8%,#f4f0e5 0,transparent 40%),var(--paper)}
+.wrap{max-width:1360px}
+.top{position:relative;top:auto;background:transparent;border:0;padding-top:18px}
+.top .wrap{display:block;min-height:0}
+.brand-hero{position:relative;overflow:hidden;min-height:178px;border-radius:19px 19px 0 0;padding:26px 30px;display:flex;justify-content:space-between;align-items:center;gap:20px;color:#fff;background:
+ linear-gradient(112deg,rgba(26,63,49,.95) 0%,rgba(55,83,66,.80) 43%,rgba(151,153,124,.43) 100%),
+ radial-gradient(ellipse at 86% 0%,#dccbac 0%,#718f7b 48%,#284e43 100%)}
+.brand-hero::before,.brand-hero::after{content:"";position:absolute;inset:auto -8% -42% 25%;height:155%;border-radius:45% 55% 0 0;transform:rotate(-7deg);pointer-events:none;background:linear-gradient(135deg,transparent 32%,rgba(227,220,193,.19) 68%,rgba(43,74,55,.28));clip-path:polygon(0 100%,15% 58%,27% 75%,45% 38%,61% 59%,80% 23%,100% 43%,100% 100%)}
+.brand-hero::after{inset:auto -12% -49% 32%;height:140%;transform:rotate(5deg);opacity:.65;background:linear-gradient(145deg,transparent,#193f36 75%)}
+.brand-hero .brand,.brand-motto{position:relative;z-index:1}
+.brand-hero .brand{color:#fff;align-items:center;gap:22px;margin:0;font-weight:700}
+.brand-hero .mark{width:76px;height:76px;flex:none;border-radius:17px;background:rgba(16,50,41,.72);color:#fff;border:1px solid rgba(255,255,255,.13)}
+.brand-title,.brand-caption,.brand-desc{display:block}
+.brand-title{font-size:clamp(31px,3.4vw,51px);font-weight:900;line-height:1.14;letter-spacing:-.03em}
+.brand-caption{font-size:clamp(10px,1.1vw,14px);letter-spacing:.23em;opacity:.88;margin-top:4px}
+.brand-desc{font-size:14px;letter-spacing:.06em;margin-top:7px;opacity:.95}
+.brand-motto{font-size:16px;letter-spacing:.08em;line-height:1.9;margin:0;text-align:left;flex:none}
+.header-toolbar{display:flex;align-items:center;gap:14px;background:#fffefa;border:1px solid var(--rule);border-top:0;border-radius:0 0 18px 18px;padding:8px 16px;min-height:62px;box-shadow:0 10px 24px rgba(49,62,43,.045)}
+.tabs{flex:1;gap:6px;flex-wrap:wrap}
+.tabs a{color:#31463a;font-size:15px;border-radius:10px}
+.tabs a[aria-current="page"]{background:#e7eee5;color:#214b35;box-shadow:inset 0 0 0 1px #cbdaca}
+.proto{white-space:nowrap;border:1px solid var(--rule);border-radius:30px;padding:5px 10px}
+.sync>button{background:#f9faf5}
+main.wrap{padding-top:16px;padding-bottom:72px}
+.panel{border-color:var(--rule);border-radius:18px;background:var(--card);box-shadow:0 5px 20px rgba(48,59,43,.028)}
+.import-panel{margin:0 0 22px;padding:0}
+.import-panel summary{display:flex;align-items:center;gap:14px;padding:17px 20px;cursor:pointer;list-style:none}
+.import-panel summary::-webkit-details-marker{display:none}
+.import-icon{width:43px;height:43px;flex:none;display:grid;place-items:center;border-radius:12px;background:#e9eee5;font-size:26px;color:#41654d}
+.import-copy{flex:1;display:flex;flex-direction:column;min-width:0}
+.import-copy strong{font-size:16px}
+.import-copy small{font-size:12px;color:var(--muted)}
+.import-action{padding:7px 13px;border-radius:20px;border:1px solid var(--rule);white-space:nowrap;font-size:13px}
+.import-panel details[open] .import-action{background:#ecf2e9}
+.import-content{border-top:1px solid var(--rule);padding:10px 20px 20px}
+.import-content input{max-width:100%;margin-right:12px}
+.hero{background:linear-gradient(135deg,#fffefa 0%,#f4f7ed 60%,#e9f0e6 100%);color:var(--ink);border:1px solid #dce5d7;border-radius:19px;box-shadow:0 7px 26px rgba(54,77,52,.045);padding:24px 28px}
+.hero .lbl{color:#4a6352;font-weight:500}
+.hero .big{color:#193c2b}
+.hero .delta,.hero .delta strong{color:#45654b}
+.hero .ruler .cap{color:#496450;gap:10px;flex-wrap:wrap}
+.hero .ruler svg text{fill:#47624f}
+.mgrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.m{padding:18px 19px;background:#fffefa;border:1px solid #e7e9df;border-radius:15px;box-shadow:0 4px 13px rgba(50,70,49,.035);gap:5px;min-height:114px}
+.m strong{font-size:clamp(18px,1.6vw,23px);line-height:1.35;overflow-wrap:anywhere}
+.m span{color:#526456}
+.m em{color:#687669}
+.days b.on{background:#3a7152;border-color:#3a7152}
+#h-week,#h-trend{letter-spacing:-.02em}
+.stack{gap:18px}
+.notes li{border:1px solid #ebe8dd;border-radius:12px;background:#fbfaf5;margin-bottom:8px;padding:11px 14px}
+.notes li:last-child{border:1px solid #ebe8dd}
+#v-week .split>.panel:first-child{border-color:#e9ddc7;background:#fffdf8}
+#v-week .split>.panel:first-child h2::before{content:"⚠";color:#c37f39;margin-right:8px}
+.chip[aria-pressed="true"]{background:#244935;color:#fff;border-color:#244935}
+.bottom{box-shadow:0 -7px 22px rgba(44,62,45,.07)}
+@media(max-width:900px){.brand-hero{min-height:154px}.brand-motto{font-size:13px}.header-toolbar{gap:8px}.tabs a{padding:0 9px;font-size:13px}.proto{display:none}}
+@media(max-width:760px){
+ .top{padding-top:0}.top .wrap{padding:0}
+ .brand-hero{min-height:134px;border-radius:0 0 18px 18px;padding:24px 18px;align-items:center}
+ .brand-hero .brand{gap:12px}
+ .brand-hero .mark{width:52px;height:52px;border-radius:14px}
+ .brand-hero .mark svg{width:27px;height:27px}
+ .brand-title{font-size:clamp(25px,6vw,34px)}
+ .brand-caption{font-size:8px;letter-spacing:.15em}
+ .brand-desc{font-size:11px;margin-top:4px}
+ .brand-motto,.header-toolbar .proto{display:none}
+ .header-toolbar{position:absolute;top:100%;right:12px;transform:translateY(-50%);min-height:auto;padding:0;background:transparent;border:0;box-shadow:none;z-index:2}
+ .header-toolbar .sync>button{background:#fffefa;box-shadow:0 3px 12px rgba(0,0,0,.09)}
+ .header-toolbar .sync .pop{z-index:10}
+ main.wrap{padding:34px 14px calc(110px + env(safe-area-inset-bottom,0px))}
+ .import-panel summary{padding:13px}
+ .import-icon{height:38px;width:38px}
+ .import-copy strong{font-size:14px}
+ .import-copy small{font-size:11px}
+ .import-action{font-size:11px;padding:5px 9px}
+ .hero{grid-template-columns:1fr;gap:17px;padding:18px 17px}
+ .big{font-size:clamp(46px,12vw,64px)}
+ .hero .ruler .cap{font-size:11px;display:grid;grid-template-columns:1fr 1fr}
+ .hero .ruler .cap span:last-child{text-align:right}
+ .mgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .m{padding:14px 12px;min-height:116px}
+ .m strong{font-size:clamp(16px,4vw,20px)}
+ .bottom{left:9px;right:9px;bottom:calc(8px + env(safe-area-inset-bottom,0px));border:1px solid #e0e6dc;border-radius:22px;background:#fffefa;padding:5px 6px;box-shadow:0 6px 25px rgba(46,66,45,.13)}
+ .bottom a{min-height:52px;border-radius:15px}
+ .bottom a[aria-current="page"]{color:#244b35;background:#e8f0e7}
+}
+@media(max-width:370px){.brand-title{font-size:23px}.import-action{padding:5px}.m{padding:12px 9px}.m strong{font-size:15px}}
+
 </style>
 </head>
 <body>
 
 <header class="top">
   <div class="wrap">
-    <div class="brand">
-      <span class="mark" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg></span>
-      Ben Health OS
+    <div class="brand-hero">
+      <div class="brand">
+        <span class="mark" aria-hidden="true"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg></span>
+        <div><span class="brand-title">Ben Health OS</span><span class="brand-caption">PRIVATE HEALTH DASHBOARD</span><span class="brand-desc">健康趨勢 · 身體組成 · 醫療紀錄</span></div>
+      </div>
+      <p class="brand-motto">更了解自己<br>做出更好的健康決定</p>
     </div>
-    <nav class="tabs" aria-label="主要分頁" id="tabs"></nav>
-    <span class="proto">Firestore 正式資料</span>
-    <div class="sync">
-      <button type="button" id="syncBtn" aria-expanded="false" aria-controls="syncPop"><span class="dot" id="syncDot"></span><span id="syncLabel"></span></button>
-      <div class="pop" id="syncPop" hidden></div>
+    <div class="header-toolbar">
+      <nav class="tabs" aria-label="主要分頁" id="tabs"></nav>
+      <span class="proto">Firestore 正式資料</span>
+      <div class="sync">
+        <button type="button" id="syncBtn" aria-expanded="false" aria-controls="syncPop"><span class="dot" id="syncDot"></span><span id="syncLabel"></span></button>
+        <div class="pop" id="syncPop" hidden></div>
+      </div>
     </div>
   </div>
 </header>
-
-<main class="wrap"><section id="historicalImport" class="panel" style="margin:18px 0" hidden><h2>歷史營養與睡眠資料補齊</h2><p class="small muted">可匯入先前整理的 Week 7～14 歷史 JSON。檔案只在本機讀取，核對後寫入你登入帳號的私人 Firestore；不會提交到公開 GitHub，也不覆蓋既有週報。</p><input id="historyFile" type="file" accept=".json,application/json"><button type="button" id="historyImportBtn" class="ghost">核對並匯入歷史週報</button><p id="historyImportMsg" role="status" class="small"></p></section>
+<main class="wrap"><section id="historicalImport" class="panel import-panel" hidden><details><summary><span class="import-icon" aria-hidden="true">▤</span><span class="import-copy"><strong>歷史營養與睡眠資料補齊</strong><small>私人歷史 JSON · 核對後匯入 Firestore</small></span><span class="import-action">展開匯入 ▾</span></summary><div class="import-content"><p class="small muted">可匯入先前整理的 Week 7～14 歷史 JSON。檔案只在本機讀取，核對後寫入登入帳號的私人 Firestore；不會提交到公開 GitHub，也不覆蓋既有週報。</p><input id="historyFile" type="file" accept=".json,application/json"><button type="button" id="historyImportBtn" class="ghost">核對並匯入歷史週報</button><p id="historyImportMsg" role="status" class="small"></p></div></details></section>
   <section class="view" id="v-week" aria-labelledby="h-week"></section>
   <section class="view" id="v-trend" aria-labelledby="h-trend" hidden></section>
   <section class="view" id="v-body" aria-labelledby="h-body" hidden></section>
