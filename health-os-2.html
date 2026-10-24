@@ -794,6 +794,21 @@ function medCompare(records,field,title){
  });
  return '<section class="panel"><h2>'+esc(title)+'</h2><p class="small muted">只將相同檢驗項目、相同單位的兩次結果比較；數值變動不代表診斷。</p>'+medTable(['項目',...sorted.map(r=>r.date),...(sorted.length===2?['變化']:[])],rows)+'</section>';
 }
+
+function expandPrivateHealthReport(payload){
+ if(payload?.format!=='ben-health-v4-private-preview-1'||!Array.isArray(payload.clinic)||!Array.isArray(payload.annual)||!Array.isArray(payload.body))throw Error('請選擇之前整理的 Ben_Health_OS_私人報告資料.json');
+ const items=[];
+ payload.clinic.forEach(x=>{
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(x.date)||!x.blood)return;
+  const idx=x.date==='2026-09-23'?'september':x.date==='2026-06-24'?'june':null;
+  const urine=idx&&Array.isArray(payload.urine)?Object.fromEntries(payload.urine.map(u=>[u.label,u[idx]])):undefined;
+  items.push({id:'v4-clinic-'+x.date,data:{...x,urine,type:'定安診所檢驗',source:'Ben Health OS v4 私人報告'}});
+ });
+ payload.annual.forEach(x=>{if(/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&x.metrics)items.push({id:'v4-annual-'+x.date,data:{...x,type:'年度健檢',source:'Ben Health OS v4 私人報告'}})});
+ payload.body.forEach(x=>{if(/^\d{4}-\d{2}-\d{2}$/.test(x.date))items.push({id:'v4-inbody-'+x.date,data:{...x,type:'InBody',source:'Ben Health OS v4 私人報告'}})});
+ (payload.imaging||[]).forEach(x=>{if(/^\d{4}$/.test(String(x.date)))items.push({id:'v4-imaging-'+x.date,data:{...x,type:'影像摘要',source:'Ben Health OS v4 私人報告'}})});
+ return items;
+}
 function renderMedicalUnlocked(){
  unlockUntil=Date.now()+300000;
  const combined=[
@@ -820,9 +835,41 @@ function renderMedicalUnlocked(){
  ${tab('身體組成｜InBody 2025',bodyHTML)}
  ${tab('歷史健檢與影像｜2019–2022、年度影像',imagesHTML)}
  <details class="panel medical-section"><summary><strong>原始資料核對</strong></summary><div class="medical-content"><p class="small muted">展開比對已存在私人 Firestore 的資料來源；內容僅於解鎖期間顯示。</p>${sources||'<p class="muted">加密區尚無資料。</p>'}</div></details>
+ <section class="panel"><h2>匯入過往健檢私人報告</h2><p class="small muted">使用原有醫療密碼解鎖後，選取先前整理的 Ben_Health_OS_私人報告資料.json。檔案僅於此瀏覽器讀取，逐筆加密後儲存至私人 Firestore；不會提交到公開 GitHub。已存在的匯入項目會跳過，避免覆蓋。</p><input type="file" id="medImportFile" accept=".json,application/json"><p class="small muted" id="medImportPreview" role="status">尚未選取檔案。</p><button class="ghost" id="medImportConfirm" disabled>核對後加密匯入</button></section>
  <section class="panel"><h2>既有資料加密轉存</h2><p class="small muted">目前有 ${legacyMedical.length} 筆舊資料可建立加密副本。此操作不刪除舊資料；請先確認內容與密碼，才手動操作。</p><button class="ghost" id="migrate" ${legacyMedical.length?'':'disabled'}>加密匯入舊紀錄</button><p id="migrateStatus" role="status" class="small muted"></p></section>
  </div>`;
  $('#lockNow').onclick=()=>lockMedical();
+ let stagedPrivateMedical=null;
+ $('#medImportFile').onchange=async()=>{
+  stagedPrivateMedical=null;$('#medImportConfirm').disabled=true;
+  const file=$('#medImportFile').files?.[0];if(!file)return;
+  try{
+   if(file.size>2000000)throw Error('檔案過大，請確認是否選對檔案');
+   const items=expandPrivateHealthReport(JSON.parse(await file.text()));
+   if(!items.length)throw Error('沒有可匯入的完整紀錄');
+   stagedPrivateMedical=items;
+   $('#medImportPreview').textContent='已識別 '+items.length+' 筆報告：診所 '+items.filter(x=>x.id.startsWith('v4-clinic')).length+'、年度 '+items.filter(x=>x.id.startsWith('v4-annual')).length+'、InBody '+items.filter(x=>x.id.startsWith('v4-inbody')).length+'、影像 '+items.filter(x=>x.id.startsWith('v4-imaging')).length+'。確認後才會加密寫入。';
+   $('#medImportConfirm').disabled=false;
+  }catch(e){$('#medImportPreview').textContent='讀取失敗：'+(e.message||e);}
+ };
+ $('#medImportConfirm').onclick=async()=>{
+  if(!stagedPrivateMedical||!medicalKey||!activeUser)return;
+  const btn=$('#medImportConfirm'),status=$('#medImportPreview');btn.disabled=true;
+  try{
+   let saved=0,skipped=0;
+   for(const item of stagedPrivateMedical){
+    const ref=doc(db,'users',activeUser.uid,'medicalEncrypted',item.id);
+    if((await getDoc(ref)).exists()){skipped++;continue;}
+    await setDoc(ref,await encryptDoc(medicalKey,item.data));saved++;
+   }
+   const snapshot=await getDocs(collection(db,'users',activeUser.uid,'medicalEncrypted'));
+   medicalRecords=await Promise.all(snapshot.docs.map(async d=>({id:d.id,data:await decryptDoc(medicalKey,d.data())})));
+   stagedPrivateMedical=null;
+   renderMedicalUnlocked();
+   const msg=$('#medImportPreview');if(msg)msg.textContent='完成：新增 '+saved+' 筆，既有 '+skipped+' 筆已跳過。';
+  }catch(e){status.textContent='未全部完成：'+(e.code||e.message||e)+'。可重新匯入，已存在的紀錄不會重複覆蓋。';btn.disabled=false;}
+ };
+
  $('#migrate').onclick=async()=>{const btn=$('#migrate');btn.disabled=true;const status=$('#migrateStatus');try{let n=0;for(const item of legacyMedical){const enc=await encryptDoc(medicalKey,item.data);await setDoc(doc(db,'users',activeUser.uid,'medicalEncrypted',item.id),enc);n++}status.textContent='已加密寫入 '+n+' 筆，舊資料仍保留。請重新解鎖檢查。'}catch(e){status.textContent='加密匯入未完成：'+(e.code||e.message)}};
  if(unlockTimer)clearInterval(unlockTimer);
  unlockTimer=setInterval(()=>{const left=Math.max(0,unlockUntil-Date.now());if(!left){lockMedical();return}const el=$('#lockLeft');if(el)el.textContent=Math.ceil(left/1000)+' 秒後自動上鎖'},1000);
@@ -833,7 +880,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&unlockTime
 /* ---------------- Firebase 身分驗證與資料載入 ---------------- */
 import{initializeApp}from'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
 import{getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult,onAuthStateChanged,signOut}from'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
-import{getFirestore,collection,getDocs,doc,setDoc}from'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+import{getFirestore,collection,getDocs,getDoc,doc,setDoc}from'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 import{firebaseConfig,ownerUid}from'./firebase-config.js';
 const auth=getAuth(initializeApp(firebaseConfig)),db=getFirestore(auth.app);
 let activeUser=null;
