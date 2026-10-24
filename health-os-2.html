@@ -347,6 +347,17 @@ body{background:radial-gradient(ellipse at 85% 4%,#f6e9d9 0%,transparent 42%),li
 .medical-source pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto;font-size:12px}
 .medical-overview{border-color:#eadfce;background:#fffaf3}
 @media(max-width:760px){.medical-section .medical-content{gap:10px}.medical-table table{min-width:520px}}
+
+/* Approved warm ivory horizontal medical / body page switching */
+.switch-tabs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:thin;padding:4px 2px 12px;flex-wrap:nowrap;max-width:100%;-webkit-overflow-scrolling:touch}
+.switch-tab{flex:0 0 auto;white-space:nowrap;cursor:pointer;border-radius:999px;border:1px solid #e5d5c4;background:#fffcf8;color:#6b5240;padding:11px 19px;font-size:14px;font-weight:700;min-height:43px}
+.switch-tab[aria-selected="true"]{background:#684832;color:#fff;border-color:#684832;box-shadow:0 3px 9px rgba(76,48,27,.13)}
+.switch-tabs.secondary{padding-top:3px;padding-bottom:15px;gap:6px}
+.switch-tabs.secondary .switch-tab{padding:8px 16px;min-height:37px;font-size:13px;background:#f9f3eb}
+.switch-tabs.secondary .switch-tab[aria-selected="true"]{background:#e9d9c8;color:#543a29;border-color:#cba98e;box-shadow:none}
+.medical-single>.panel{margin:0}
+.medical-switch{min-width:0}
+@media(max-width:760px){.switch-tabs{margin-right:-10px;padding-right:12px}.switch-tab{padding:10px 14px}.medical-single>.panel{padding:15px}}
 </style>
 </head>
 <body>
@@ -722,41 +733,22 @@ function renderTrend() {
 }
 
 /* ---------------- 身體組成 ---------------- */
+
+let selectedBodyInstrument=null;
 function renderBody() {
-  const groups = {};
-  DATA.bodyComposition.filter(b=>b.date&&typeof b.bodyFatPct==='number'&&typeof b.smmKg==='number').forEach((b) => (groups[b.instrument] ??= []).push(b));
-  const panels = Object.entries(groups).map(([inst, rows]) => {
-    rows.sort((a, b) => a.date.localeCompare(b.date));
-    const last = rows[rows.length - 1];
-    const unverified = rows.filter((r) => !r.verified).length;
-    const charts = rows.length >= 2 ? `
-      <div class="split" style="margin-top:8px">
-        <div><h3 class="small muted" style="margin:0 0 4px">體脂率（%）</h3><div class="chart">${lineChart(rows.map((r) => ({ d: r.date, v: r.bodyFatPct, ill: !!r.interference })), { label: `${inst} 體脂率趨勢` })}</div></div>
-        <div><h3 class="small muted" style="margin:0 0 4px">骨骼肌（kg）</h3><div class="chart">${lineChart(rows.map((r) => ({ d: r.date, v: r.smmKg, ill: !!r.interference })), { label: `${inst} 骨骼肌趨勢` })}</div></div>
-      </div>` : `<p class="small muted" style="margin:8px 0 0">這台設備只有一次量測，累積兩次以上才會畫出趨勢。</p>`;
-    return `
-    <section class="panel" aria-label="${esc(inst)}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
-        <div><h2 style="margin:0">${esc(inst)}</h2><span class="small muted">${rows.length} 次量測，最近一次 ${ymd(last.date)}${last.location ? `，${esc(last.location)}` : ''}</span></div>
-        ${unverified ? `<span class="badge todo">${unverified} 筆待核對原始報告</span>` : '<span class="badge ok">已核對</span>'}
-      </div>
-      <div class="mgrid" style="margin-top:14px">
-        <div class="m"><span>體重</span><strong>${fmt(last.weightKg)} kg</strong></div>
-        <div class="m"><span>骨骼肌</span><strong>${fmt(last.smmKg)} kg</strong>${rows.length > 1 ? `<em>較首次 ${signed(last.smmKg - rows[0].smmKg)} kg</em>` : ''}</div>
-        <div class="m"><span>體脂率</span><strong>${fmt(last.bodyFatPct)} %</strong>${rows.length > 1 ? `<em>較首次 ${signed(last.bodyFatPct - rows[0].bodyFatPct)}</em>` : ''}</div>
-        <div class="m"><span>內臟脂肪</span>${last.visceralFatLevel !== undefined ? `<strong>${last.visceralFatLevel} 級</strong>` : '<strong class="muted">未量測</strong><em>這台設備沒有此項</em>'}</div>
-      </div>
-      ${charts}
-    </section>`;
-  }).join('');
-  $('#v-body').innerHTML = `
-  <div class="stack">
-    <div>
-      <h1 id="h-body">身體組成</h1>
-      <p class="sub">不同設備的量測方式不同，各自看自己的變化，不互相比較。</p>
-    </div>
-    ${panels || '<section class="panel"><h2>尚無可顯示的身體組成紀錄</h2><p class="muted">Firestore 資料尚未對應到可用的量測欄位，或尚未完成驗證。原始資料未刪除。請勿將這個狀態視為沒有做過檢測。</p></section>'}
-  </div>`;
+ const groups={};
+ DATA.bodyComposition.filter(b=>b.date&&typeof b.bodyFatPct==='number'&&typeof b.smmKg==='number').forEach(b=>(groups[b.instrument]??=[]).push(b));
+ const entries=Object.entries(groups).sort(([a],[b])=>a.includes('InBody')?-1:b.includes('InBody')?1:a.localeCompare(b));
+ if(!entries.length){$('#v-body').innerHTML='<div class="stack"><h1 id="h-body">身體組成</h1><section class="panel">尚無可顯示的身體組成紀錄；請先核對 Firestore 資料。</section></div>';return;}
+ if(!entries.some(([key])=>key===selectedBodyInstrument))selectedBodyInstrument=entries[0][0];
+ const tabs=entries.map(([key])=>'<button type="button" class="switch-tab" role="tab" data-instrument="'+esc(key)+'" aria-selected="'+(key===selectedBodyInstrument)+'">'+esc(key)+'</button>').join('');
+ const [inst,rows]=entries.find(([key])=>key===selectedBodyInstrument);
+ rows.sort((a,b)=>a.date.localeCompare(b.date));
+ const last=rows[rows.length-1],unverified=rows.filter(r=>!r.verified).length;
+ const charts=rows.length>=2?'<div class="split" style="margin-top:14px"><div><h3 class="small muted">體脂率（%）</h3><div class="chart">'+lineChart(rows.map(r=>({d:r.date,v:r.bodyFatPct,ill:!!r.interference})),{label:inst+' 體脂率趨勢'})+'</div></div><div><h3 class="small muted">骨骼肌（kg）</h3><div class="chart">'+lineChart(rows.map(r=>({d:r.date,v:r.smmKg,ill:!!r.interference})),{label:inst+' 骨骼肌趨勢'})+'</div></div></div>':'<p class="small muted" style="margin-top:14px">目前只有一次量測，累積兩次以上才會繪製趨勢，不與其他設備混算。</p>';
+ const metrics='<div class="mgrid" style="margin-top:14px"><div class="m"><span>體重</span><strong>'+fmt(last.weightKg)+' kg</strong></div><div class="m"><span>骨骼肌</span><strong>'+fmt(last.smmKg)+' kg</strong>'+(rows.length>1?'<em>較首次 '+signed(last.smmKg-rows[0].smmKg)+' kg</em>':'')+'</div><div class="m"><span>體脂率</span><strong>'+fmt(last.bodyFatPct)+' %</strong>'+(rows.length>1?'<em>較首次 '+signed(last.bodyFatPct-rows[0].bodyFatPct)+' %</em>':'')+'</div><div class="m"><span>內臟脂肪</span>'+(last.visceralFatLevel!==undefined?'<strong>'+esc(last.visceralFatLevel)+' 級</strong>':'<strong class="muted">未量測</strong><em>這台設備沒有此項</em>')+'</div></div>';
+ $('#v-body').innerHTML='<div class="stack"><div><h1 id="h-body">身體組成</h1><p class="sub">依設備切換觀看，只比較同一台設備的有效紀錄。</p></div><nav class="switch-tabs" role="tablist" aria-label="身體組成設備">'+tabs+'</nav><section class="panel" role="tabpanel"><div class="unlockbar"><div><h2>'+esc(inst)+'</h2><span class="small muted">'+rows.length+' 次量測，最近一次 '+ymd(last.date)+(last.location?'，'+esc(last.location):'')+'</span></div><span class="badge '+(unverified?'todo':'ok')+'">'+(unverified?unverified+' 筆待核對原始報告':'已核對')+'</span></div>'+metrics+charts+'</section></div>';
+ document.querySelectorAll('#v-body [data-instrument]').forEach(button=>button.onclick=()=>{selectedBodyInstrument=button.dataset.instrument;renderBody()});
 }
 
 /* ---------------- 醫療：只解密已加密紀錄，舊資料不會在未解鎖時顯示 ---------------- */
@@ -849,25 +841,54 @@ function renderMedicalUnlocked(){
  const urine=combined.filter(x=>x.data.urine&&x.data.date).map(x=>x.data);
  const scans=combined.filter(x=>x.data.imaging||x.data.summary).map(x=>x.data);
  const inbody=combined.filter(x=>typeof x.data.bodyFatPct==='number'||typeof x.data.skeletalMuscleKg==='number').map(x=>x.data);
- const tab=(label,html)=>'<details class="panel medical-section" open><summary><strong>'+esc(label)+'</strong></summary><div class="medical-content">'+html+'</div></details>';
- const clinicHTML=medCompare(labs,'blood','血液檢驗｜同院所比較')||'<p class="muted">目前私人 Firestore 未找到可對照的診所血液檢驗紀錄。</p>';
- const yearlyHTML=medCompare(annual,'metrics','年度健檢｜同單位比較')||'<p class="muted">年度健檢資料已在先前私人報告中整理，但尚未確認存入目前 Firestore 加密區。</p>';
- const urineHTML=urine.length?medTable(['日期','項目','結果'],urine.flatMap(x=>Object.entries(x.urine||{}).map(([k,v])=>[x.date,MED_LABELS[k]||k,typeof v==='object'?JSON.stringify(v):v]))):'<p class="muted">尚無可核對的尿液檢驗結構化資料。</p>';
- const bodyHTML=inbody.length?medTable(['日期','設備','體重 kg','骨骼肌 kg','體脂率 %','內臟脂肪'],inbody.map(x=>[x.date,x.deviceModel||x.source||'未註記',x.weightKg,x.skeletalMuscleKg,x.bodyFatPct,x.visceralFatLevel])):'<p class="muted">未找到已儲存在醫療加密區的 InBody 正式記錄；其他設備的資料不混算。</p>';
- const imagesHTML=scans.length?medTable(['日期','檢查摘要'],scans.map(x=>[x.date||'年份待核對',typeof x.imaging==='string'?x.imaging:(x.summary||'請查看原始報告')])):'<p class="muted">2019、2020、2022 年原始健檢及年度影像摘要已找回，但尚未全部匯入私人加密資料庫。</p>';
+ 
+ const single=(record,field,title)=>record?'<section class="panel"><h2>'+esc(title)+' · '+esc(record.date)+'</h2>'+medTable(['項目','結果'],Object.entries(record[field]||{}).map(([k,v])=>[MED_LABELS[k]||v?.label||k,String(medVal(v))+(medUnit(v)?' '+medUnit(v):'')]))+'</section>':'<section class="panel">沒有這一天的可用紀錄。</section>';
+ const byDate=arr=>[...arr].sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+ const clinicRows=byDate(labs),annualRows=byDate(annual),urineRows=byDate(urine),imageRows=byDate(scans),bodyRows=byDate(inbody);
+ const renderUrine=records=>records.length?medTable(['日期','項目','結果'],records.flatMap(x=>Object.entries(x.urine||{}).map(([k,v])=>[x.date,MED_LABELS[k]||k,typeof v==='object'?JSON.stringify(v):v]))):'<section class="panel">目前沒有已匯入的尿液檢驗數據。</section>';
+ const medSections={
+  clinic:{label:'定安診所',children:[
+   {key:'compare',label:'同院所比較',html:medCompare(clinicRows,'blood','血液檢驗｜同院所比較')||'<section class="panel">目前沒有可比較的診所檢驗資料。</section>'},
+   ...clinicRows.map((x,i)=>({key:'clinic'+i,label:x.date,html:single(x,'blood','定安診所血液檢驗')}))
+  ]},
+  annual:{label:'年度健檢',children:[
+   {key:'compare',label:'年度比較',html:medCompare(annualRows,'metrics','年度健檢｜同單位比較')||'<section class="panel">目前沒有可比較的年度健檢資料。</section>'},
+   ...annualRows.map((x,i)=>({key:'annual'+i,label:x.date,html:single(x,'metrics','年度健檢')}))
+  ]},
+  inbody:{label:'InBody',children:bodyRows.map((x,i)=>({key:'body'+i,label:x.date,html:medTable(['日期','設備','體重 kg','骨骼肌 kg','體脂率 %','內臟脂肪'],[[x.date,x.deviceModel||x.source||'未註記',x.weightKg,x.skeletalMuscleKg,x.bodyFatPct,x.visceralFatLevel]])}))},
+  imaging:{label:'影像摘要',children:[
+   {key:'all',label:'歷年總覽',html:imageRows.length?medTable(['年度／日期','檢查摘要'],imageRows.map(x=>[x.date||'待核對',typeof x.imaging==='string'?x.imaging:(x.summary||'請查看原始報告')])):'<section class="panel">歷史影像摘要尚未匯入私人加密區。</section>'},
+   ...imageRows.map((x,i)=>({key:'image'+i,label:String(x.date||'待核對'),html:'<section class="panel"><h2>'+esc(x.date||'影像摘要')+'</h2><p>'+esc(typeof x.imaging==='string'?x.imaging:(x.summary||'請查看原始報告'))+'</p></section>'}))
+  ]},
+  urine:{label:'尿液比較',children:[
+   {key:'compare',label:'尿液比較',html:renderUrine(urineRows)},
+   ...urineRows.map((x,i)=>({key:'urine'+i,label:x.date,html:renderUrine([x])}))
+  ]}
+ };
+ if(!medSections.inbody.children.length)medSections.inbody.children=[{key:'none',label:'尚無記錄',html:'<section class="panel">尚無可用的 InBody 正式報告。</section>'}];
  const sources=combined.map(r=>'<details class="medical-source"><summary>'+esc(r.data.date||r.id)+' · '+esc(r.data.facility||r.data.reportType||r.data.type||'健康紀錄')+' <small>('+esc(r.source)+')</small></summary><pre>'+esc(JSON.stringify(r.data,null,2))+'</pre></details>').join('');
  $('#v-medical').innerHTML=`<div class="stack">
  <div class="unlockbar"><div><h1 id="h-medical">醫療健診報告</h1><p class="sub" id="lockLeft"></p></div><button class="ghost" id="lockNow">立即上鎖</button></div>
  <section class="panel medical-overview"><h2>歷史醫療資料</h2><p class="muted">已整理的資料系列包含：2019／2020／2022 健檢、2024／2025 年度健檢、2026 定安診所追蹤，以及 2025 InBody。下方只顯示目前私人 Firestore 中能讀取的值，未匯入者不會假裝已同步。</p><div class="medical-pills"><span class="badge ok">已解鎖私人資料</span><span class="badge">${medicalRecords.length} 筆加密</span><span class="badge">${legacyMedical.length} 筆既有資料</span></div></section>
- ${tab('定安診所｜2026 年',clinicHTML+urineHTML)}
- ${tab('年度健檢｜2024–2025',yearlyHTML)}
- ${tab('身體組成｜InBody 2025',bodyHTML)}
- ${tab('歷史健檢與影像｜2019–2022、年度影像',imagesHTML)}
+ <div id="medicalSwitch" class="medical-switch"></div>
  <details class="panel medical-section"><summary><strong>原始資料核對</strong></summary><div class="medical-content"><p class="small muted">展開比對已存在私人 Firestore 的資料來源；內容僅於解鎖期間顯示。</p>${sources||'<p class="muted">加密區尚無資料。</p>'}</div></details>
  <section class="panel"><h2>匯入過往健檢私人報告</h2><p class="small muted">使用原有醫療密碼解鎖後，可一次選取五份個別 JSON（2024、2025 年健檢，2026 年兩次定安診所，以及 2025 InBody），也支援舊版私人報告 JSON。只在本機解析，確認後逐筆加密寫入私人 Firestore，不會提交到公開 GitHub；相同來源 ID 的既有紀錄會跳過。</p><input type="file" id="medImportFile" accept=".json,application/json" multiple><p class="small muted" id="medImportPreview" role="status">尚未選取檔案。</p><button class="ghost" id="medImportConfirm" disabled>核對後加密匯入</button></section>
  <section class="panel"><h2>既有資料加密轉存</h2><p class="small muted">目前有 ${legacyMedical.length} 筆舊資料可建立加密副本。此操作不刪除舊資料；請先確認內容與密碼，才手動操作。</p><button class="ghost" id="migrate" ${legacyMedical.length?'':'disabled'}>加密匯入舊紀錄</button><p id="migrateStatus" role="status" class="small muted"></p></section>
  </div>`;
  $('#lockNow').onclick=()=>lockMedical();
+ let selectedMedicalTab='clinic',selectedMedicalSub={};
+ const switchRoot=$('#medicalSwitch');
+ function showMedicalTab(){
+  const keys=Object.keys(medSections),section=medSections[selectedMedicalTab]||medSections.clinic;
+  const activeKey=selectedMedicalSub[selectedMedicalTab]&&section.children.some(x=>x.key===selectedMedicalSub[selectedMedicalTab])?selectedMedicalSub[selectedMedicalTab]:section.children[0]?.key;
+  selectedMedicalSub[selectedMedicalTab]=activeKey;
+  const active=section.children.find(x=>x.key===activeKey);
+  switchRoot.innerHTML='<nav class="switch-tabs" role="tablist" aria-label="醫療報告分類">'+keys.map(key=>'<button type="button" class="switch-tab" role="tab" data-med-tab="'+key+'" aria-selected="'+(key===selectedMedicalTab)+'">'+esc(medSections[key].label)+'</button>').join('')+'</nav><nav class="switch-tabs secondary" role="tablist" aria-label="報告期間">'+section.children.map(x=>'<button type="button" class="switch-tab" role="tab" data-med-sub="'+esc(x.key)+'" aria-selected="'+(x.key===activeKey)+'">'+esc(x.label)+'</button>').join('')+'</nav><div class="medical-single" role="tabpanel">'+(active?.html||'<section class="panel">尚無可用資料。</section>')+'</div>';
+  switchRoot.querySelectorAll('[data-med-tab]').forEach(button=>button.onclick=()=>{selectedMedicalTab=button.dataset.medTab;showMedicalTab()});
+  switchRoot.querySelectorAll('[data-med-sub]').forEach(button=>button.onclick=()=>{selectedMedicalSub[selectedMedicalTab]=button.dataset.medSub;showMedicalTab()});
+ }
+ showMedicalTab();
+
  let stagedPrivateMedical=null;
  $('#medImportFile').onchange=async()=>{
   stagedPrivateMedical=null;$('#medImportConfirm').disabled=true;
