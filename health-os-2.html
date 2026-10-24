@@ -610,7 +610,7 @@ function renderWeek() {
   <div class="stack">
     <div>
       <h1 id="h-week">第 ${w.week} 週</h1>
-      <p class="sub">${md(start)}（${wd(start)}）到 ${md(end)}（${wd(end)}），${w.status==='closed'?'已結案':'進行中'}，${w.weightKg.historicalOfficial?'採歷史正式週平均；Firestore '+w.reportedDays+' 天每日紀錄':'已有 '+w.weightKg.n+' 天體重紀錄'}</p>
+      <p class="sub">${md(start)}（${wd(start)}）到 ${md(end)}（${wd(end)}），${w.status==='closed'?'已結案':'進行中'}，${w.status==='open'?'待你確認每日 23:00 後結案；只顯示已同步至 Firestore 的紀錄':(w.weightKg.historicalOfficial?'採歷史正式週平均；Firestore '+w.reportedDays+' 天每日紀錄':'已有 '+w.weightKg.n+' 天體重紀錄')}</p>
     </div>
 
     <section class="hero" aria-label="本週體重">
@@ -1070,7 +1070,22 @@ async function loadRealData(user){
  for(const k of Object.keys(byWeek))delete byWeek[k];
  DATA.weeks.forEach(w=>byWeek[w.week]=w);
  for(let i=1;i<DATA.weeks.length;i++){const a=DATA.weeks[i-1],b=DATA.weeks[i];b.vsPrevWeek={deltaKg:b.weightKg.avg-a.weightKg.avg,comparable:!a.excludeFromFatLoss&&!b.excludeFromFatLoss&&b.week===a.week+1}}
- current=DATA.weeks.at(-1);
+ // 「本週」依台灣日期決定；歷史正式結案仍留在週報，不再把 Week 14 當本週。
+ const actualWeek=weekNo(DATA.today);
+ if(actualWeek>0 && actualWeek<=53){
+   const existing=byWeek[actualWeek];
+   const weekDays=DATA.daily.filter(d=>weekNo(d.date)===actualWeek&&typeof d.weightKg==='number');
+   if(!existing){
+     const avg=weekDays.length?weekDays.reduce((n,d)=>n+d.weightKg,0)/weekDays.length:undefined;
+     const draft={week:actualWeek,status:'open',reportedDays:weekDays.length,weightKg:{avg,n:weekDays.length},proteinG:{avg:undefined,n:0},proteinTargetHitDays:0,proteinReportedDays:0,trainingDays:0,trainingReportedDays:0,sleepH:{avg:undefined,n:0},waterMl:{avg:undefined,n:0},kcal:{avg:undefined,n:0},interference:[],excludeFromFatLoss:false,note:'當週未結案；僅顯示已核對並同步至 Firestore 的資料',strategy:''};
+     DATA.weeks.push(draft);DATA.weeks.sort((a,b)=>a.week-b.week);byWeek[actualWeek]=draft;
+   }
+   current=byWeek[actualWeek];
+   const prior=byWeek[actualWeek-1];
+   if(prior&&current.weightKg.avg!==undefined&&prior.weightKg.avg!==undefined){
+     current.vsPrevWeek={deltaKg:current.weightKg.avg-prior.weightKg.avg,comparable:!prior.excludeFromFatLoss&&!current.excludeFromFatLoss};
+   }
+ }else current=DATA.weeks.at(-1);
  DATA.bodyComposition.splice(0,DATA.bodyComposition.length,...all.bodyComposition.map(x=>({date:x.date||(/^\d{4}-\d{2}-\d{2}/.test(x.id)?x.id.slice(0,10):''),id:x.id,instrument:x.instrument||x.deviceModel||x.source||'家用設備',weightKg:numeric(x,'weightKg','weight'),smmKg:numeric(x,'skeletalMuscleKg','smmKg','muscleMassKg'),bodyFatPct:numeric(x,'bodyFatPct','fatPercent'),bodyFatKg:numeric(x,'bodyFatKg','fatMassKg'),visceralFatLevel:numeric(x,'visceralFatLevel'),verified:x.verified===true,excluded:x.excluded===true,excludeReason:x.excludeReason||'',interference:x.interference||[]})));
  legacyMedical=[...all.labs.map(x=>({id:'lab-'+x.id,data:{...x,type:'檢驗'}})),...all.bodyComposition.filter(x=>/診所|clinic|inbody/i.test(String(x.source||x.deviceModel||''))).map(x=>({id:'clinic-'+x.id,data:{...x,type:'診所 InBody'}}))];
  dataThrough=DATA.daily.map(d=>d.date).sort().at(-1)||'';
@@ -1078,7 +1093,12 @@ async function loadRealData(user){
  DATA.lastSync.readBack.expected=all.daily.length+all.weeks.length+all.bodyComposition.length+all.labs.length;
  DATA.lastSync.readBack.matched=0;
  if(!current){document.querySelector('#v-week').innerHTML='<section class="panel"><h2>尚無週報</h2><p>Firestore 尚無可用的週報資料，請先核對資料匯入狀態。</p></section>';renderSync();renderBody();renderMedicalLocked();route();return;}
- selectedWeek=current.week;renderSync();renderWeek();renderTrend();renderBody();renderMedicalLocked();route();
+ selectedWeek=current.week;renderSync();
+ if(current.weightKg.avg===undefined){
+   const start=weekStart(current.week),end=addDays(start,6);
+   $('#v-week').innerHTML='<div class="stack"><div><h1 id="h-week">第 '+current.week+' 週｜進行中</h1><p class="sub">'+md(start)+'（'+wd(start)+'）到 '+md(end)+'（'+wd(end)+'）</p></div><section class="panel"><h2>本週等待正式同步</h2><p>目前 Firestore 尚無本週可計算的晨重紀錄。請先在 ChatGPT 回報；每天 23:00 後由你確認「今日結案，更新網站」，完成授權寫入與讀回核對後，這裡才會更新。</p><p class="small muted">歷史週報保留既有結案數值；未回報不補值、不當作零。ChatGPT 到 Firestore 的自動寫入串接尚未啟用。</p></section></div>';
+ }else renderWeek();
+ renderTrend();renderBody();renderMedicalLocked();route();
 }
 onAuthStateChanged(auth,async user=>{
  lockMedical(false);activeUser=null;
