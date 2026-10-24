@@ -629,17 +629,17 @@ function renderWeek() {
 
     <section class="panel" aria-label="每日同步狀態">
       <h2>每日同步狀態｜Firestore 正式紀錄</h2>
-      <p class="small muted">已結案：Firestore 標示 closed；已入庫：有資料但沒有 closed 標記，可能已另行修訂；未同步：該日沒有入庫資料。此處不代表完整審核結果。</p>
-      <div class="strip">${Array.from({length:7},(_,i)=>{const date=addDays(start,i),d=dailyMap[date],state=d?(d.status==='closed'?'已結案':'已入庫'):(date>DATA.today?'未到日期':'尚未同步');return '<div class="cell'+(d?'':' none')+'"><span>'+md(date)+'</span><b>'+state+'</b></div>'}).join('')}</div>
+      <p class="small muted">已結案：有 closed 標記或經核對的正式修訂歷史；已入庫：尚無結案依據；尚未同步：資料庫無當日紀錄。</p>
+      <div class="strip">${Array.from({length:7},(_,i)=>{const date=addDays(start,i),d=dailyMap[date],state=d?(d.status==='closed'||d.revised?'已結案':'已入庫'):(date>DATA.today?'未到日期':'尚未同步');return '<div class="cell'+(d?'':' none')+'"><span>'+md(date)+'</span><b>'+state+'</b></div>'}).join('')}</div>
     </section>
     <section aria-labelledby="h-goals">
       <h2 id="h-goals">本週健康摘要</h2>
       <div class="mgrid">
         <div class="m"><span>${w.status==='open'?'目前平均體重（非完整週）':'平均體重'}</span><strong>${fmt(w.weightKg.avg, 2)} kg</strong><em>${w.weightKg.historicalOfficial?'歷史正式結案平均':w.weightKg.n+' 天體重紀錄的平均'}</em></div>
         <div class="m"><span>週變化</span>${w.vsPrevWeek ? (w.vsPrevWeek.comparable ? `<strong>${signed(w.vsPrevWeek.deltaKg, 2)} kg</strong><em>${w.status==='open'?'暫時比較，非完整週結算':'與第 '+(w.week-1)+' 週相比'}</em>` : `<strong>不比較</strong><em>${w.excludeFromFatLoss?'本週為干擾週':'前週為干擾週'}</em>`) : '<strong class="muted">—</strong><em>沒有可比較的前週</em>'}</div>
-        <div class="m"><span>蛋白質</span>${w.proteinG.historical ? `<strong>${esc(w.proteinG.rangeText)}</strong><em>歷史營養估算，非每日實測</em>` : w.proteinG.n ? `<strong>${fmt(w.proteinG.avg, 0)} g/日</strong><em>${w.proteinReportedDays} 天紀錄${w.proteinG.includesEstimate?'，含估算':''}</em>` : '<strong class="muted">無可靠週平均</strong><em>不代表當週未攝取</em>'}</div>
+        <div class="m"><span>蛋白質</span>${w.proteinG.historical ? `<strong>${esc(w.proteinG.rangeText)}</strong><em>歷史營養估算，非每日實測</em>` : w.proteinG.n ? `<strong>${fmt(w.proteinG.avg, 0)} g/日</strong><em>${w.proteinReportedDays} 天紀錄${w.proteinG.includesEstimate?'，含估算':''}</em>` : '<strong class="muted">暫無可計算平均</strong><em>餐點已記錄，待核定當日蛋白質數值</em>'}</div>
         <div class="m"><span>睡眠</span>${w.sleepH.historical ? `<strong>${esc(w.sleepH.rangeText)}</strong><em>歷史結案估算</em>` : w.sleepH.n ? `<strong>${fmt(w.sleepH.avg, 1)} 小時</strong><em>${w.sleepH.n} 天有紀錄</em>` : '<strong class="muted">未回報</strong><em>無可靠睡眠平均</em>'}</div>
-        <div class="m"><span>熱量</span>${w.kcal.historical ? `<strong>${esc(w.kcal.rangeText)}</strong><em>歷史估算，非每日實測</em>` : w.kcal.n ? `<strong>${fmt(w.kcal.avg, 0)} kcal/日</strong><em>${w.kcal.n} 天有紀錄${w.kcal.includesEstimate?'，含估算':''}</em>` : '<strong class="muted">無可靠週平均</strong><em>餐點紀錄不代表七日完整攝取</em>'}</div>
+        <div class="m"><span>熱量</span>${w.kcal.historical ? `<strong>${esc(w.kcal.rangeText)}</strong><em>歷史估算，非每日實測</em>` : w.kcal.n ? `<strong>${fmt(w.kcal.avg, 0)} kcal/日</strong><em>${w.kcal.n} 天有紀錄${w.kcal.includesEstimate?'，含估算':''}</em>` : '<strong class="muted">暫無可計算平均</strong><em>餐點已記錄，待補每日熱量估算</em>'}</div>
         <div class="m"><span>每日體重紀錄</span><strong>${w.reportedDays} / 7 天</strong><em>已有每日體重紀錄${w.weightKg.historicalOfficial?'；週平均採正式結案值':''}</em><div class="days">${dots}</div></div>
       </div>
     </section>
@@ -1056,10 +1056,10 @@ document.querySelector('#historyImportBtn').onclick=async()=>{
 };
 
 async function loadRealData(user){
- const names=['daily','weeks','bodyComposition','labs','weeklyHistorical'];
+ const names=['daily','weeks','bodyComposition','labs','weeklyHistorical','dailyRevisions'];
  const snaps=await Promise.all(names.map(n=>getDocs(collection(db,'users',user.uid,n))));
  const all=Object.fromEntries(names.map((n,i)=>[n,snaps[i].docs.map(d=>({id:d.id,...d.data()}))]));
- DATA.daily.splice(0,DATA.daily.length,...all.daily.filter(x=>/^\d{4}-\d\d-\d\d$/.test(x.date||x.id)).map(x=>({date:x.date||x.id,weightKg:numeric(x,'weightKg'),sleepH:numeric(x,'sleepHours','sleepH'),waterMl:numeric(x,'waterMl'),proteinG:numeric(x,'proteinG'),notes:x.notes||'',status:x.status||'',estimated:[]})).sort((a,b)=>a.date.localeCompare(b.date)));
+ DATA.daily.splice(0,DATA.daily.length,...all.daily.filter(x=>/^\d{4}-\d\d-\d\d$/.test(x.date||x.id)).map(x=>({date:x.date||x.id,weightKg:numeric(x,'weightKg'),sleepH:numeric(x,'sleepHours','sleepH'),waterMl:numeric(x,'waterMl'),proteinG:numeric(x,'proteinG'),notes:x.notes||'',status:x.status||'',revised:all.dailyRevisions.some(h=>h.date===(x.date||x.id)),meals:Array.isArray(x.meals)?x.meals:[],kcal:numeric(x,'caloriesKcal','kcal'),estimated:[]})).sort((a,b)=>a.date.localeCompare(b.date)));
  // 歷史日資料與即時 daily 分離保存，缺筆才補顯示，不覆蓋當前資料庫。
  const historicalDaily=all.weeklyHistorical.flatMap(h=>Array.isArray(h.historicalDaily)?h.historicalDaily:[]);
  const existingDates=new Set(DATA.daily.map(d=>d.date));
@@ -1072,7 +1072,7 @@ async function loadRealData(user){
  const hasWeek12=normalized.some(w=>w.week===12);
  if(!hasWeek12){const w12weights=DATA.daily.filter(d=>weekNo(d.date)===12&&typeof d.weightKg==='number');if(w12weights.length){normalized.push({week:12,status:'closed',reportedDays:w12weights.length,weightKg:{avg:w12weights.reduce((a,d)=>a+d.weightKg,0)/w12weights.length,n:w12weights.length},proteinG:{avg:undefined,n:0},proteinTargetHitDays:0,proteinReportedDays:0,trainingDays:0,trainingReportedDays:0,sleepH:{avg:undefined,n:0},waterMl:{avg:undefined,n:0},kcal:{avg:undefined,n:0},interference:['illness','dehydration'],excludeFromFatLoss:true,note:'疾病／脫水干擾；此週平均為可用晨重的重算值，尚未核對正式結案',strategy:''})}}
  const dailyForWeek=week=>DATA.daily.filter(d=>weekNo(d.date)===week&&typeof d.weightKg==='number');
- for(const w of normalized){const ds=dailyForWeek(w.week);w.weightKg.n=w.weightKg.historicalOfficial?(w.weightKg.n||ds.length):(ds.length||w.weightKg.n);w.reportedDays=ds.length;w.officialWeightDays=w.weightKg.historicalOfficial?(w.weightKg.n||0):null;for(const [field,key] of [['sleepH','sleepH'],['waterMl','waterMl'],['proteinG','proteinG']]){const vals=DATA.daily.filter(d=>weekNo(d.date)===w.week&&typeof d[key]==='number').map(d=>d[key]);if(vals.length && !w[field]?.historical){w[field]={avg:vals.reduce((a,b)=>a+b,0)/vals.length,n:vals.length}}}}
+ for(const w of normalized){const ds=dailyForWeek(w.week);w.weightKg.n=w.weightKg.historicalOfficial?(w.weightKg.n||ds.length):(ds.length||w.weightKg.n);w.reportedDays=ds.length;w.officialWeightDays=w.weightKg.historicalOfficial?(w.weightKg.n||0):null;for(const [field,key] of [['sleepH','sleepH'],['waterMl','waterMl'],['proteinG','proteinG'],['kcal','kcal']]){const vals=DATA.daily.filter(d=>weekNo(d.date)===w.week&&typeof d[key]==='number').map(d=>d[key]);if(vals.length && !w[field]?.historical){w[field]={avg:vals.reduce((a,b)=>a+b,0)/vals.length,n:vals.length}}}}
  DATA.weeks.splice(0,DATA.weeks.length,...normalized.sort((a,b)=>a.week-b.week));
  for(const k of Object.keys(byWeek))delete byWeek[k];
  DATA.weeks.forEach(w=>byWeek[w.week]=w);
