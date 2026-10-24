@@ -335,6 +335,18 @@ body{background:radial-gradient(ellipse at 85% 4%,#f6e9d9 0%,transparent 42%),li
  .bottom a[aria-current="page"]{background:#f4e9dd;color:#684832}
 }
 
+
+
+/* Medical dashboard: authenticated, locally password-unlocked only */
+.medical-section>summary{cursor:pointer;font-size:17px;list-style-position:inside}
+.medical-section .medical-content{padding-top:14px;display:grid;gap:14px}
+.medical-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.medical-table{max-width:100%;overflow:auto}
+.medical-source{margin:6px 0;padding:12px;border:1px solid var(--rule);border-radius:10px}
+.medical-source summary{cursor:pointer}
+.medical-source pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto;font-size:12px}
+.medical-overview{border-color:#eadfce;background:#fffaf3}
+@media(max-width:760px){.medical-section .medical-content{gap:10px}.medical-table table{min-width:520px}}
 </style>
 </head>
 <body>
@@ -760,10 +772,56 @@ function renderMedicalLocked(){
  $('#v-medical').innerHTML=`<div class="lock"><div class="ic">${ICONS.medical}</div><h1 id="h-medical">醫療檔案已上鎖</h1><p class="muted">需先使用授權 Google 帳號登入，再輸入醫療密碼。解密僅在本裝置進行。</p><form id="unlockForm"><label for="medPw">醫療密碼</label><input id="medPw" type="password" autocomplete="off" required><p class="err" id="medErr" role="alert"></p><button class="primary">解鎖醫療資料</button></form><p class="small muted">閒置五分鐘、離開醫療頁或切換 App 時自動上鎖。忘記密碼將無法復原加密資料。</p></div>`;
  $('#unlockForm').onsubmit=async e=>{e.preventDefault();const input=$('#medPw');const pw=input.value;input.value='';try{const key=await derive(pw);const v=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(VERIFIER.iv)},key,unb64(VERIFIER.ciphertext));if(new TextDecoder().decode(v)!=='ben-health-medical-v1')throw Error('invalid');medicalKey=key;const snap=await getDocs(collection(db,'users',activeUser.uid,'medicalEncrypted'));medicalRecords=await Promise.all(snap.docs.map(async d=>({id:d.id,data:await decryptDoc(key,d.data())})));renderMedicalUnlocked()}catch(err){medicalKey=null;$('#medErr').textContent='無法解鎖，請確認密碼或加密資料狀態。'}};
 }
+// Medical reports are rendered only after Google authentication AND local medical password unlock.
+// No health measurements are embedded in the public GitHub source.
+const MED_LABELS={totalCholesterol:'總膽固醇',triglyceride:'三酸甘油脂',hdl:'HDL',ldl:'LDL',glucose:'空腹血糖',creatinine:'肌酸酐',egfr:'eGFR',bilirubin:'總膽紅素',tc:'總膽固醇',tg:'三酸甘油脂',alt:'ALT',ggt:'γ-GT',weight:'體重',waist:'腰圍',sbp:'收縮壓',dbp:'舒張壓',skeletalMuscleKg:'骨骼肌量',bodyFatPct:'體脂率',fatMassKg:'體脂肪量',visceralFatLevel:'內臟脂肪等級',bmrKcal:'基礎代謝率'};
+const medVal=(entry)=>entry&&typeof entry==='object'&&'value' in entry?entry.value:entry;
+const medUnit=(entry)=>entry&&typeof entry==='object'?String(entry.unit||''):'';
+const medTable=(headers,rows)=>'<div class="tbl medical-table"><table><thead><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(v=>'<td>'+esc(v??'—')+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+function medCompare(records,field,title){
+ const sorted=records.filter(x=>x&&x.date&&x[field]&&typeof x[field]==='object').sort((a,b)=>a.date.localeCompare(b.date));
+ if(!sorted.length)return '';
+ const keys=[...new Set(sorted.flatMap(x=>Object.keys(x[field])))];
+ const rows=keys.map(k=>{
+  const values=sorted.map(r=>r[field][k]);
+  const units=values.map(medUnit).filter(Boolean);
+  const comparable=values.length===2&&values.every(x=>typeof medVal(x)==='number')&&new Set(units).size<=1;
+  const delta=comparable?Number(medVal(values[1]))-Number(medVal(values[0])):null;
+  return [MED_LABELS[k]||values.find(x=>x&&typeof x==='object'&&x.label)?.label||k,
+    ...values.map(v=>v===undefined?'—':String(medVal(v))+(medUnit(v)?' '+medUnit(v):'')),
+    ...(sorted.length===2?[delta===null?'不可比較':(delta>0?'+':'')+Number(delta.toFixed(2))]:[])
+  ];
+ });
+ return '<section class="panel"><h2>'+esc(title)+'</h2><p class="small muted">只將相同檢驗項目、相同單位的兩次結果比較；數值變動不代表診斷。</p>'+medTable(['項目',...sorted.map(r=>r.date),...(sorted.length===2?['變化']:[])],rows)+'</section>';
+}
 function renderMedicalUnlocked(){
  unlockUntil=Date.now()+300000;
- const rows=medicalRecords.map(r=>`<details class="panel"><summary><strong>${esc(r.data.date||r.id)}</strong>　${esc(r.data.type||r.data.reportType||'醫療紀錄')}</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px">${esc(JSON.stringify(r.data,null,2))}</pre></details>`).join('');
- $('#v-medical').innerHTML=`<div class="stack"><div class="unlockbar"><div><h1 id="h-medical">醫療檔案</h1><p class="sub" id="lockLeft"></p></div><button class="ghost" id="lockNow">立即上鎖</button></div><p class="small muted">目前顯示已在瀏覽器加密、存入 Firestore 的紀錄；既有未加密診所資料不會自動公開。</p>${rows||'<section class="panel"><h2>尚無已加密的醫療紀錄</h2><p>可將既有 Firestore 醫療資料加密複製進保護區。</p></section>'}<section class="panel"><h2>既有醫療資料轉入加密區</h2><p class="small muted">偵測到 ${legacyMedical.length} 筆舊資料。執行後會建立加密副本，原始資料不刪除，待核對後再另行處理。</p><button class="ghost" id="migrate" ${legacyMedical.length?'':'disabled'}>加密匯入舊紀錄</button><p id="migrateStatus" role="status" class="small muted"></p></section></div>`;
+ const combined=[
+  ...medicalRecords.map(r=>({id:r.id,data:r.data,source:'已加密資料'})),
+  ...legacyMedical.filter(r=>!medicalRecords.some(e=>e.id===r.id)).map(r=>({id:r.id,data:r.data,source:'既有 Firestore 資料（尚未加密轉存）'}))
+ ];
+ const labs=combined.filter(x=>x.data.blood&&x.data.date).map(x=>x.data);
+ const annual=combined.filter(x=>x.data.metrics&&x.data.date).map(x=>x.data);
+ const urine=combined.filter(x=>x.data.urine&&x.data.date).map(x=>x.data);
+ const scans=combined.filter(x=>x.data.imaging||x.data.summary).map(x=>x.data);
+ const inbody=combined.filter(x=>typeof x.data.bodyFatPct==='number'||typeof x.data.skeletalMuscleKg==='number').map(x=>x.data);
+ const tab=(label,html)=>'<details class="panel medical-section" open><summary><strong>'+esc(label)+'</strong></summary><div class="medical-content">'+html+'</div></details>';
+ const clinicHTML=medCompare(labs,'blood','血液檢驗｜同院所比較')||'<p class="muted">目前私人 Firestore 未找到可對照的診所血液檢驗紀錄。</p>';
+ const yearlyHTML=medCompare(annual,'metrics','年度健檢｜同單位比較')||'<p class="muted">年度健檢資料已在先前私人報告中整理，但尚未確認存入目前 Firestore 加密區。</p>';
+ const urineHTML=urine.length?medTable(['日期','項目','結果'],urine.flatMap(x=>Object.entries(x.urine||{}).map(([k,v])=>[x.date,MED_LABELS[k]||k,typeof v==='object'?JSON.stringify(v):v]))):'<p class="muted">尚無可核對的尿液檢驗結構化資料。</p>';
+ const bodyHTML=inbody.length?medTable(['日期','設備','體重 kg','骨骼肌 kg','體脂率 %','內臟脂肪'],inbody.map(x=>[x.date,x.deviceModel||x.source||'未註記',x.weightKg,x.skeletalMuscleKg,x.bodyFatPct,x.visceralFatLevel])):'<p class="muted">未找到已儲存在醫療加密區的 InBody 正式記錄；其他設備的資料不混算。</p>';
+ const imagesHTML=scans.length?medTable(['日期','檢查摘要'],scans.map(x=>[x.date||'年份待核對',typeof x.imaging==='string'?x.imaging:(x.summary||'請查看原始報告')])):'<p class="muted">2019、2020、2022 年原始健檢及年度影像摘要已找回，但尚未全部匯入私人加密資料庫。</p>';
+ const sources=combined.map(r=>'<details class="medical-source"><summary>'+esc(r.data.date||r.id)+' · '+esc(r.data.facility||r.data.reportType||r.data.type||'健康紀錄')+' <small>('+esc(r.source)+')</small></summary><pre>'+esc(JSON.stringify(r.data,null,2))+'</pre></details>').join('');
+ $('#v-medical').innerHTML=`<div class="stack">
+ <div class="unlockbar"><div><h1 id="h-medical">醫療健診報告</h1><p class="sub" id="lockLeft"></p></div><button class="ghost" id="lockNow">立即上鎖</button></div>
+ <section class="panel medical-overview"><h2>歷史醫療資料</h2><p class="muted">已整理的資料系列包含：2019／2020／2022 健檢、2024／2025 年度健檢、2026 定安診所追蹤，以及 2025 InBody。下方只顯示目前私人 Firestore 中能讀取的值，未匯入者不會假裝已同步。</p><div class="medical-pills"><span class="badge ok">已解鎖私人資料</span><span class="badge">${medicalRecords.length} 筆加密</span><span class="badge">${legacyMedical.length} 筆既有資料</span></div></section>
+ ${tab('定安診所｜2026 年',clinicHTML+urineHTML)}
+ ${tab('年度健檢｜2024–2025',yearlyHTML)}
+ ${tab('身體組成｜InBody 2025',bodyHTML)}
+ ${tab('歷史健檢與影像｜2019–2022、年度影像',imagesHTML)}
+ <details class="panel medical-section"><summary><strong>原始資料核對</strong></summary><div class="medical-content"><p class="small muted">展開比對已存在私人 Firestore 的資料來源；內容僅於解鎖期間顯示。</p>${sources||'<p class="muted">加密區尚無資料。</p>'}</div></details>
+ <section class="panel"><h2>既有資料加密轉存</h2><p class="small muted">目前有 ${legacyMedical.length} 筆舊資料可建立加密副本。此操作不刪除舊資料；請先確認內容與密碼，才手動操作。</p><button class="ghost" id="migrate" ${legacyMedical.length?'':'disabled'}>加密匯入舊紀錄</button><p id="migrateStatus" role="status" class="small muted"></p></section>
+ </div>`;
  $('#lockNow').onclick=()=>lockMedical();
  $('#migrate').onclick=async()=>{const btn=$('#migrate');btn.disabled=true;const status=$('#migrateStatus');try{let n=0;for(const item of legacyMedical){const enc=await encryptDoc(medicalKey,item.data);await setDoc(doc(db,'users',activeUser.uid,'medicalEncrypted',item.id),enc);n++}status.textContent='已加密寫入 '+n+' 筆，舊資料仍保留。請重新解鎖檢查。'}catch(e){status.textContent='加密匯入未完成：'+(e.code||e.message)}};
  if(unlockTimer)clearInterval(unlockTimer);
