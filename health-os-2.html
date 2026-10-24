@@ -795,8 +795,9 @@ function medCompare(records,field,title){
  return '<section class="panel"><h2>'+esc(title)+'</h2><p class="small muted">只將相同檢驗項目、相同單位的兩次結果比較；數值變動不代表診斷。</p>'+medTable(['項目',...sorted.map(r=>r.date),...(sorted.length===2?['變化']:[])],rows)+'</section>';
 }
 
+
 function expandPrivateHealthReport(payload){
- if(payload?.format!=='ben-health-v4-private-preview-1'||!Array.isArray(payload.clinic)||!Array.isArray(payload.annual)||!Array.isArray(payload.body))throw Error('請選擇之前整理的 Ben_Health_OS_私人報告資料.json');
+ if(payload?.format!=='ben-health-v4-private-preview-1'||!Array.isArray(payload.clinic)||!Array.isArray(payload.annual)||!Array.isArray(payload.body))throw Error('檔案格式不符合既有私人報告規格');
  const items=[];
  payload.clinic.forEach(x=>{
   if(!/^\d{4}-\d{2}-\d{2}$/.test(x.date)||!x.blood)return;
@@ -808,6 +809,34 @@ function expandPrivateHealthReport(payload){
  payload.body.forEach(x=>{if(/^\d{4}-\d{2}-\d{2}$/.test(x.date))items.push({id:'v4-inbody-'+x.date,data:{...x,type:'InBody',source:'Ben Health OS v4 私人報告'}})});
  (payload.imaging||[]).forEach(x=>{if(/^\d{4}$/.test(String(x.date)))items.push({id:'v4-imaging-'+x.date,data:{...x,type:'影像摘要',source:'Ben Health OS v4 私人報告'}})});
  return items;
+}
+const MED_FIELD_CODES={'WEIGHT':'weight','WAIST':'waist','SBP':'sbp','DBP':'dbp','GLU-AC':'glucose','TC':'tc','TG':'tg','HDL':'hdl','LDL':'ldl','ALT':'alt','GGT':'ggt','eGFR':'egfr','CRE':'creatinine','T-BIL':'bilirubin'};
+function expandIndividualMedicalFile(payload){
+ if(!payload||typeof payload!=='object'||!/^\d{4}-\d{2}-\d{2}$/.test(payload.date))throw Error('個別報告缺少有效日期');
+ const common={date:payload.date,source:'Ben Health OS 原始個別 JSON',originalVerified:payload.verified===true,verificationNote:payload.notes||'尚未逐項與原始報告核對'};
+ if(payload.kind==='checkup'||payload.kind==='lab'){
+  if(!Array.isArray(payload.items)||!payload.items.length)throw Error('健檢或檢驗沒有項目清單');
+  const blood={},metrics={},urine={},imaging=[];
+  for(const item of payload.items){
+   if(!item||!item.code||item.value===undefined)continue;
+   const value={label:item.name||item.code,value:item.value,unit:item.unit||'',verified:item.verified===true};
+   if(item.code==='US-ABD'){imaging.push(item.value);continue;}
+   if(item.code.startsWith('U-')||item.code==='UPCR'){urine[item.name||item.code]=item.unit?String(item.value)+' '+item.unit:String(item.value);continue;}
+   const key=MED_FIELD_CODES[item.code]||item.code;
+   if(payload.kind==='checkup')metrics[key]=value;
+   else blood[key]=value;
+  }
+  const type=payload.kind==='checkup'?'年度健檢':'定安診所檢驗';
+  const data={...common,type,facility:payload.institution||'',reportType:type,metrics:payload.kind==='checkup'?metrics:undefined,blood:payload.kind==='lab'?blood:undefined,urine:Object.keys(urine).length?urine:undefined,imaging:imaging.length?imaging.join('；'):undefined};
+  return [{id:'original-'+payload.kind+'-'+payload.date,data}];
+ }
+ if((payload.instrument||payload.deviceModel)&&typeof payload.bodyFatPct==='number'){
+  return [{id:'original-inbody-'+payload.date,data:{...common,type:'InBody',deviceModel:payload.instrument||payload.deviceModel,weightKg:payload.weightKg,skeletalMuscleKg:payload.smmKg??payload.skeletalMuscleKg,fatMassKg:payload.bodyFatKg??payload.fatMassKg,bodyFatPct:payload.bodyFatPct,visceralFatLevel:payload.visceralFatLevel,bmrKcal:payload.bmrKcal}}];
+ }
+ throw Error('不支援的個別 JSON 類型');
+}
+function expandMedicalFile(payload){
+ return payload?.format==='ben-health-v4-private-preview-1'?expandPrivateHealthReport(payload):expandIndividualMedicalFile(payload);
 }
 function renderMedicalUnlocked(){
  unlockUntil=Date.now()+300000;
@@ -835,20 +864,29 @@ function renderMedicalUnlocked(){
  ${tab('身體組成｜InBody 2025',bodyHTML)}
  ${tab('歷史健檢與影像｜2019–2022、年度影像',imagesHTML)}
  <details class="panel medical-section"><summary><strong>原始資料核對</strong></summary><div class="medical-content"><p class="small muted">展開比對已存在私人 Firestore 的資料來源；內容僅於解鎖期間顯示。</p>${sources||'<p class="muted">加密區尚無資料。</p>'}</div></details>
- <section class="panel"><h2>匯入過往健檢私人報告</h2><p class="small muted">使用原有醫療密碼解鎖後，選取先前整理的 Ben_Health_OS_私人報告資料.json。檔案僅於此瀏覽器讀取，逐筆加密後儲存至私人 Firestore；不會提交到公開 GitHub。已存在的匯入項目會跳過，避免覆蓋。</p><input type="file" id="medImportFile" accept=".json,application/json"><p class="small muted" id="medImportPreview" role="status">尚未選取檔案。</p><button class="ghost" id="medImportConfirm" disabled>核對後加密匯入</button></section>
+ <section class="panel"><h2>匯入過往健檢私人報告</h2><p class="small muted">使用原有醫療密碼解鎖後，可一次選取五份個別 JSON（2024、2025 年健檢，2026 年兩次定安診所，以及 2025 InBody），也支援舊版私人報告 JSON。只在本機解析，確認後逐筆加密寫入私人 Firestore，不會提交到公開 GitHub；相同來源 ID 的既有紀錄會跳過。</p><input type="file" id="medImportFile" accept=".json,application/json" multiple><p class="small muted" id="medImportPreview" role="status">尚未選取檔案。</p><button class="ghost" id="medImportConfirm" disabled>核對後加密匯入</button></section>
  <section class="panel"><h2>既有資料加密轉存</h2><p class="small muted">目前有 ${legacyMedical.length} 筆舊資料可建立加密副本。此操作不刪除舊資料；請先確認內容與密碼，才手動操作。</p><button class="ghost" id="migrate" ${legacyMedical.length?'':'disabled'}>加密匯入舊紀錄</button><p id="migrateStatus" role="status" class="small muted"></p></section>
  </div>`;
  $('#lockNow').onclick=()=>lockMedical();
  let stagedPrivateMedical=null;
  $('#medImportFile').onchange=async()=>{
   stagedPrivateMedical=null;$('#medImportConfirm').disabled=true;
-  const file=$('#medImportFile').files?.[0];if(!file)return;
+  const files=[...($('#medImportFile').files||[])];if(!files.length)return;
   try{
-   if(file.size>2000000)throw Error('檔案過大，請確認是否選對檔案');
-   const items=expandPrivateHealthReport(JSON.parse(await file.text()));
-   if(!items.length)throw Error('沒有可匯入的完整紀錄');
-   stagedPrivateMedical=items;
-   $('#medImportPreview').textContent='已識別 '+items.length+' 筆報告：診所 '+items.filter(x=>x.id.startsWith('v4-clinic')).length+'、年度 '+items.filter(x=>x.id.startsWith('v4-annual')).length+'、InBody '+items.filter(x=>x.id.startsWith('v4-inbody')).length+'、影像 '+items.filter(x=>x.id.startsWith('v4-imaging')).length+'。確認後才會加密寫入。';
+   if(files.length>12)throw Error('一次最多 12 份檔案');
+   const items=[];
+   for(const f of files){
+    if(f.size>2000000)throw Error(f.name+' 檔案過大');
+    let parsed;
+    try{parsed=JSON.parse(await f.text())}catch(e){throw Error(f.name+' 不是有效 JSON')}
+    try{items.push(...expandMedicalFile(parsed))}catch(e){throw Error(f.name+'：'+e.message)}
+   }
+   if(!items.length)throw Error('沒有辨識到可匯入紀錄');
+   const unique=new Map(items.map(x=>[x.id,x]));
+   if(unique.size!==items.length)throw Error('所選檔案包含重複紀錄，請先確認');
+   stagedPrivateMedical=[...unique.values()];
+   const types=stagedPrivateMedical.reduce((o,x)=>(o[x.data.type||'其他']=(o[x.data.type||'其他']||0)+1,o),{});
+   $('#medImportPreview').textContent='已辨識 '+files.length+' 份檔案、'+items.length+' 筆紀錄（'+Object.entries(types).map(([k,v])=>k+' '+v).join('、')+'）。未核實數值仍保留未核對標記；確認後才加密寫入。';
    $('#medImportConfirm').disabled=false;
   }catch(e){$('#medImportPreview').textContent='讀取失敗：'+(e.message||e);}
  };
