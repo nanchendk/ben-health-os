@@ -872,8 +872,9 @@ function renderMedicalUnlocked(){
  <section class="panel medical-overview"><h2>歷史醫療資料</h2><p class="muted">已整理的資料系列包含：2019／2020／2022 健檢、2024／2025 年度健檢、2026 定安診所追蹤，以及 2025 InBody。下方只顯示目前私人 Firestore 中能讀取的值，未匯入者不會假裝已同步。</p><div class="medical-pills"><span class="badge ok">已解鎖私人資料</span><span class="badge">${medicalRecords.length} 筆加密</span><span class="badge">${legacyMedical.length} 筆既有資料</span></div></section>
  <div id="medicalSwitch" class="medical-switch"></div>
  <details class="panel medical-section"><summary><strong>原始資料核對</strong></summary><div class="medical-content"><p class="small muted">展開比對已存在私人 Firestore 的資料來源；內容僅於解鎖期間顯示。</p>${sources||'<p class="muted">加密區尚無資料。</p>'}</div></details>
- <section class="panel"><h2>匯入過往健檢私人報告</h2><p class="small muted">使用原有醫療密碼解鎖後，可一次選取五份個別 JSON（2024、2025 年健檢，2026 年兩次定安診所，以及 2025 InBody），也支援舊版私人報告 JSON。只在本機解析，確認後逐筆加密寫入私人 Firestore，不會提交到公開 GitHub；相同來源 ID 的既有紀錄會跳過。</p><input type="file" id="medImportFile" accept=".json,application/json" multiple><p class="small muted" id="medImportPreview" role="status">尚未選取檔案。</p><button class="ghost" id="medImportConfirm" disabled>核對後加密匯入</button></section>
+ <details class="panel medical-section"><summary><strong>資料匯入與加密管理</strong></summary><div class="medical-content"> <section class="panel"><h2>匯入過往健檢私人報告</h2><p class="small muted">使用原有醫療密碼解鎖後，可一次選取五份個別 JSON（2024、2025 年健檢，2026 年兩次定安診所，以及 2025 InBody），也支援舊版私人報告 JSON。只在本機解析，確認後逐筆加密寫入私人 Firestore，不會提交到公開 GitHub；相同來源 ID 的既有紀錄會跳過。</p><input type="file" id="medImportFile" accept=".json,application/json" multiple><p class="small muted" id="medImportPreview" role="status">尚未選取檔案。</p><button class="ghost" id="medImportConfirm" disabled>核對後加密匯入</button></section>
  <section class="panel"><h2>既有資料加密轉存</h2><p class="small muted">目前有 ${legacyMedical.length} 筆舊資料可建立加密副本。此操作不刪除舊資料；請先確認內容與密碼，才手動操作。</p><button class="ghost" id="migrate" ${legacyMedical.length?'':'disabled'}>加密匯入舊紀錄</button><p id="migrateStatus" role="status" class="small muted"></p></section>
+ </div></details>
  </div>`;
  $('#lockNow').onclick=()=>lockMedical();
  let selectedMedicalTab='clinic',selectedMedicalSub={};
@@ -1051,7 +1052,7 @@ async function loadRealData(user){
  DATA.weeks.forEach(w=>byWeek[w.week]=w);
  for(let i=1;i<DATA.weeks.length;i++){const a=DATA.weeks[i-1],b=DATA.weeks[i];b.vsPrevWeek={deltaKg:b.weightKg.avg-a.weightKg.avg,comparable:!a.excludeFromFatLoss&&!b.excludeFromFatLoss&&b.week===a.week+1}}
  current=DATA.weeks.at(-1);
- DATA.bodyComposition.splice(0,DATA.bodyComposition.length,...all.bodyComposition.filter(x=>!/診所|clinic|inbody/i.test(String(x.source||x.deviceModel||''))).map(x=>({date:x.date,id:x.id,instrument:x.source||x.deviceModel||'家用設備',weightKg:numeric(x,'weightKg'),smmKg:numeric(x,'skeletalMuscleKg'),bodyFatPct:numeric(x,'bodyFatPct'),verified:x.valid!==false})));
+ DATA.bodyComposition.splice(0,DATA.bodyComposition.length,...all.bodyComposition.map(x=>({date:x.date,id:x.id,instrument:x.deviceModel||x.instrument||x.source||'家用設備',weightKg:numeric(x,'weightKg'),smmKg:numeric(x,'skeletalMuscleKg','smmKg'),bodyFatPct:numeric(x,'bodyFatPct'),visceralFatLevel:numeric(x,'visceralFatLevel'),verified:x.verified===true||x.valid===true})));
  legacyMedical=[...all.labs.map(x=>({id:'lab-'+x.id,data:{...x,type:'檢驗'}})),...all.bodyComposition.filter(x=>/診所|clinic|inbody/i.test(String(x.source||x.deviceModel||''))).map(x=>({id:'clinic-'+x.id,data:{...x,type:'診所 InBody'}}))];
  dataThrough=DATA.daily.map(d=>d.date).sort().at(-1)||'';
  DATA.lastSync.finishedAt=null;
