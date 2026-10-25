@@ -1071,6 +1071,17 @@ async function loadRealData(user){
  for(const [n,h] of Object.entries(historical)){if(!normalized.some(w=>w.week===Number(n))){const w=normalizeWeek(h);if(w){applyHistory(w,h);normalized.push(w)}}}
  const hasWeek12=normalized.some(w=>w.week===12);
  if(!hasWeek12){const w12weights=DATA.daily.filter(d=>weekNo(d.date)===12&&typeof d.weightKg==='number');if(w12weights.length){normalized.push({week:12,status:'closed',reportedDays:w12weights.length,weightKg:{avg:w12weights.reduce((a,d)=>a+d.weightKg,0)/w12weights.length,n:w12weights.length},proteinG:{avg:undefined,n:0},proteinTargetHitDays:0,proteinReportedDays:0,trainingDays:0,trainingReportedDays:0,sleepH:{avg:undefined,n:0},waterMl:{avg:undefined,n:0},kcal:{avg:undefined,n:0},interference:['illness','dehydration'],excludeFromFatLoss:true,note:'疾病／脫水干擾；此週平均為可用晨重的重算值，尚未核對正式結案',strategy:''})}}
+ // 每日正式紀錄可獨立建立週報：不依賴 weeks 文件，避免漏掉剛結束的 Week 15。
+ const existingWeekNumbers=new Set(normalized.map(w=>w.week));
+ const dailyWeekNumbers=[...new Set(all.daily.filter(d=>/^\\d{4}-\\d{2}-\\d{2}$/.test(d.date||'')&&d.status==='closed').map(d=>weekNo(d.date)))].filter(n=>Number.isInteger(n)&&n>=7&&n<=53);
+ for(const n of dailyWeekNumbers){
+   if(existingWeekNumbers.has(n))continue;
+   const days=DATA.daily.filter(d=>weekNo(d.date)===n&&Number.isFinite(d.weightKg));
+   const values=days.map(d=>d.weightKg);
+   const avg=values.length?values.reduce((a,b)=>a+b,0)/values.length:undefined;
+   normalized.push({week:n,status:n<weekNo(DATA.today)?'closed':'open',reportedDays:days.length,weightKg:{avg,n:days.length},proteinG:{avg:undefined,n:0},proteinTargetHitDays:0,proteinReportedDays:0,trainingDays:0,trainingReportedDays:0,sleepH:{avg:undefined,n:0},waterMl:{avg:undefined,n:0},kcal:{avg:undefined,n:0},interference:[],excludeFromFatLoss:false,note:'由 Firestore 已結案每日紀錄產生，非獨立週結案報告',strategy:''});
+   existingWeekNumbers.add(n);
+ }
  const dailyForWeek=week=>DATA.daily.filter(d=>weekNo(d.date)===week&&typeof d.weightKg==='number');
  for(const w of normalized){const ds=dailyForWeek(w.week);w.weightKg.n=w.weightKg.historicalOfficial?(w.weightKg.n||ds.length):(ds.length||w.weightKg.n);w.reportedDays=ds.length;w.officialWeightDays=w.weightKg.historicalOfficial?(w.weightKg.n||0):null;for(const [field,key] of [['sleepH','sleepH'],['waterMl','waterMl'],['proteinG','proteinG'],['kcal','kcal']]){const vals=DATA.daily.filter(d=>weekNo(d.date)===w.week&&typeof d[key]==='number').map(d=>d[key]);if(vals.length && !w[field]?.historical){w[field]={avg:vals.reduce((a,b)=>a+b,0)/vals.length,n:vals.length}}}}
  DATA.weeks.splice(0,DATA.weeks.length,...normalized.sort((a,b)=>a.week-b.week));
