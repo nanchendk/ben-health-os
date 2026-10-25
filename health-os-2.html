@@ -1086,6 +1086,14 @@ async function loadRealData(user){
  }
  const dailyForWeek=week=>DATA.daily.filter(d=>weekNo(d.date)===week&&typeof d.weightKg==='number');
  for(const w of normalized){const ds=dailyForWeek(w.week);w.weightKg.n=w.weightKg.historicalOfficial?(w.weightKg.n||ds.length):(ds.length||w.weightKg.n);w.reportedDays=ds.length;w.officialWeightDays=w.weightKg.historicalOfficial?(w.weightKg.n||0):null;for(const [field,key] of [['sleepH','sleepH'],['waterMl','waterMl'],['proteinG','proteinG'],['kcal','kcal']]){const vals=DATA.daily.filter(d=>weekNo(d.date)===w.week&&typeof d[key]==='number').map(d=>d[key]);if(vals.length && !w[field]?.historical){w[field]={avg:vals.reduce((a,b)=>a+b,0)/vals.length,n:vals.length}}}}
+ // 各週均由已入庫每日營養估算計算覆蓋率與區間，不只計算首頁目前週次。
+ for(const w of normalized){
+   const days=DATA.daily.filter(d=>weekNo(d.date)===w.week);
+   for(const [field,kind] of [['calorieEstimate','caloriesKcal'],['proteinEstimate','proteinG']]){
+     const vals=days.map(d=>d.nutritionEstimate?.[kind]).filter(v=>v&&Number.isFinite(v.min)&&Number.isFinite(v.max)&&v.min<=v.max);
+     w[field]={n:vals.length,min:vals.length?vals.reduce((a,v)=>a+v.min,0)/vals.length:undefined,max:vals.length?vals.reduce((a,v)=>a+v.max,0)/vals.length:undefined};
+   }
+ }
  DATA.weeks.splice(0,DATA.weeks.length,...normalized.sort((a,b)=>a.week-b.week));
  for(const k of Object.keys(byWeek))delete byWeek[k];
  DATA.weeks.forEach(w=>byWeek[w.week]=w);
