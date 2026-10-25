@@ -1091,8 +1091,9 @@ async function loadRealData(user){
  for(const k of Object.keys(byWeek))delete byWeek[k];
  DATA.weeks.forEach(w=>byWeek[w.week]=w);
  for(let i=1;i<DATA.weeks.length;i++){const a=DATA.weeks[i-1],b=DATA.weeks[i];b.vsPrevWeek={deltaKg:b.weightKg.avg-a.weightKg.avg,comparable:!a.excludeFromFatLoss&&!b.excludeFromFatLoss&&b.week===a.week+1}}
- // 「本週」依台灣日期決定；歷史正式結案仍留在週報，不再把 Week 14 當本週。
- const actualWeek=weekNo(DATA.today);
+ // 首頁固定呈現 Firestore 最新有晨重紀錄的週；新週有第一筆正式紀錄後才切換，避免週一顯示空白。
+ const lastRecordedDay=all.daily.filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d.date||'')&&Number.isFinite(d.weightKg)&&d.date<=DATA.today).map(d=>d.date).sort().at(-1);
+ const actualWeek=weekNo(lastRecordedDay||DATA.today);
  if(actualWeek>0 && actualWeek<=53){
    const existing=byWeek[actualWeek];
    const weekDays=DATA.daily.filter(d=>weekNo(d.date)===actualWeek&&typeof d.weightKg==='number');
