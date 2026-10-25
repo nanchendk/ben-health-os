@@ -514,7 +514,6 @@ function weightChart(list, { w = 680, h = 240, selected = null, mini = false } =
     if (sel && !mini) s += `<text x="${X(x.week)}" y="${Y(x.weightKg.avg) - 14}" text-anchor="middle" font-size="13" font-weight="700" style="fill:var(--ink)">${fmt(x.weightKg.avg, 2)}</text>`;
     s += `<text x="${X(x.week)}" y="${h - (mini ? 6 : 10)}" text-anchor="middle" font-size="${mini ? 11 : 12}" ${sel ? 'font-weight="700" style="fill:var(--ink)"' : ''}>W${x.week}</text>`;
   });
-  if (domainEnd && domainEnd !== points[points.length - 1].d) s += `<text x="${w-padR}" y="${h-8}" text-anchor="end" font-size="12" fill="var(--muted)">${md(domainEnd)}</text>`;
   return s + '</svg>';
 }
 
