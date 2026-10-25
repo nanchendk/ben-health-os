@@ -1064,6 +1064,21 @@ async function loadRealData(user){
  DATA.daily.splice(0,DATA.daily.length,...all.daily.filter(x=>/^\d{4}-\d\d-\d\d$/.test(x.date||x.id)).map(x=>({date:x.date||x.id,weightKg:numeric(x,'weightKg'),sleepH:numeric(x,'sleepHours','sleepH'),waterMl:numeric(x,'waterMl'),proteinG:numeric(x,'proteinG'),notes:x.notes||'',status:x.status||'',revised:all.dailyRevisions.some(h=>h.date===(x.date||x.id)),meals:Array.isArray(x.meals)?x.meals:[],kcal:numeric(x,'caloriesKcal','kcal'),nutritionEstimate:x.nutritionEstimate||null,estimated:[]})).sort((a,b)=>a.date.localeCompare(b.date)));
  // 歷史日資料與即時 daily 分離保存，缺筆才補顯示，不覆蓋當前資料庫。
  const historicalDaily=all.weeklyHistorical.flatMap(h=>Array.isArray(h.historicalDaily)?h.historicalDaily:[]);
+ // 從已核對的歷史每日文字擷取既有營養估算（僅顯示、不回寫 Firestore）。
+ const historicalRange=(d,kind)=>{
+   const t=[d.foodNotes,d.notes].filter(x=>typeof x==='string').join('；');
+   const pattern=kind==='proteinG'?/蛋白質(?:估算|至少)?\\s*(\d{1,3}(?:\\.\d+)?)\\s*[～~–-]\\s*(\d{1,3}(?:\\.\d+)?)\\s*g/i:/(?:全天|當日|飲食|疾病期|估算)?(?:熱量)?(?:估算)?\\s*(\d{3,4})\\s*[～~–-]\\s*(\d{3,4})\\s*kcal/i;
+   const m=t.match(pattern);if(!m)return null;
+   const min=Number(m[1]),max=Number(m[2]);
+   return Number.isFinite(min)&&Number.isFinite(max)&&min<=max?{min,max}:null;
+ };
+ const historicalDailyMap=new Map(historicalDaily.filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d.date||'')).map(d=>[d.date,d]));
+ for(const d of DATA.daily){
+   if(d.nutritionEstimate)continue;
+   const h=historicalDailyMap.get(d.date);if(!h)continue;
+   const proteinG=historicalRange(h,'proteinG'),caloriesKcal=historicalRange(h,'caloriesKcal');
+   if(proteinG||caloriesKcal)d.nutritionEstimate={proteinG,caloriesKcal,source:'historical-daily-quoted-estimate'};
+ }
  const existingDates=new Set(DATA.daily.map(d=>d.date));
  const restored=historicalDaily.filter(d=>/^\d{4}-\d\d-\d\d$/.test(d.date||'')&&!existingDates.has(d.date)).map(d=>({date:d.date,weightKg:numeric(d,'weightKg'),sleepH:numeric(d,'sleepHours','sleepH'),waterMl:numeric(d,'waterMl'),proteinG:numeric(d,'proteinG'),notes:d.notes||'',historical:true,estimated:[]}));
  DATA.daily.push(...restored);DATA.daily.sort((a,b)=>a.date.localeCompare(b.date));
