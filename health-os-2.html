@@ -718,7 +718,7 @@ function renderTrend() {
       <div class="mgrid">
         <div class="m"><span>平均體重</span>${w.weightKg.n ? `<strong>${fmt(w.weightKg.avg, 2)} kg</strong><em>${w.weightKg.historicalOfficial?'正式結案值；目前 Firestore '+w.reportedDays+' 天每日體重':'Firestore '+w.weightKg.n+' 天有紀錄'}</em>` : '<strong class="muted">未回報</strong>'}</div>
         <div class="m"><span>週變化</span>${vs}</div>
-        <div class="m"><span>蛋白質</span>${w.proteinG.historical ? `<strong>${esc(w.proteinG.rangeText)}</strong><em>歷史營養估算，非每日實測</em>` : w.proteinG.n ? `<strong>${w.proteinTargetHitDays} / ${w.proteinReportedDays} 天達標</strong><em>日均 ${fmt(w.proteinG.avg, 0)} g${w.proteinG.includesEstimate ? '，含估算' : ''}</em>` : '<strong class="muted">無可靠週平均</strong><em>不能據此認定當週未攝取蛋白質</em>'}</div>
+        <div class="m"><span>蛋白質</span>${w.proteinG.historical ? `<strong>${esc(w.proteinG.rangeText)}</strong><em>歷史營養估算，非每日實測</em>` : w.proteinG.n ? `<strong>${w.proteinTargetHitDays} / ${w.proteinReportedDays} 天達標</strong><em>日均 ${fmt(w.proteinG.avg, 0)} g${w.proteinG.includesEstimate ? '，含估算' : ''}</em>` : w.proteinEstimate?.n ? `<strong>${fmt(w.proteinEstimate.min,0)}～${fmt(w.proteinEstimate.max,0)} g/日</strong><em>每日估算，${w.proteinEstimate.n} 天有資料；非實測</em>` : '<strong class="muted">無可靠週平均</strong><em>不能據此認定當週未攝取蛋白質</em>'}</div>
         <div class="m"><span>睡眠</span>${stat(w.sleepH, 1, '小時')}</div>
         <div class="m"><span>熱量</span>${stat(w.kcal, 0, 'kcal')}</div>
         <div class="m"><span>已匯入每日體重筆數</span><strong>${w.reportedDays} / 7 天</strong><em>已匯入的每日體重（含歷史補錄）；未匯入日資料時以正式週報為準</em></div>
