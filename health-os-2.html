@@ -546,7 +546,14 @@ function lineChart(points, { w = 520, h = 160, digits = 1, label = '', domainSta
   const Y = (v) => padT + (hi - v) / (hi - lo) * (h - padT - padB);
   let s = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(label)}">`;
   [lo, hi].forEach((v) => { s += `<line x1="${padL}" x2="${w - padR}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--rule)" ${v === hi ? 'stroke-dasharray="2 5"' : ''}/><text x="${padL - 8}" y="${Y(v) + 4}" text-anchor="end" font-size="12">${v}</text>`; });
-  s += `<polyline points="${points.map((p) => `${X(p.d)},${Y(p.v)}`).join(' ')}" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linejoin="round"/>`;
+  if(points.some(p=>p.ill)){
+    for(let i=1;i<points.length;i++){
+      const a=points[i-1],b=points[i],affected=a.ill||b.ill;
+      s += `<line x1="${X(a.d)}" y1="${Y(a.v)}" x2="${X(b.d)}" y2="${Y(b.v)}" stroke="${affected?'#958b81':'var(--ink)'}" stroke-width="2.4" ${affected?'stroke-dasharray="5 5"':''}/>`;
+    }
+  }else{
+    s += `<polyline points="${points.map((p) => `${X(p.d)},${Y(p.v)}`).join(' ')}" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linejoin="round"/>`;
+  }
   points.forEach((p, i) => {
     s += `<circle cx="${X(p.d)}" cy="${Y(p.v)}" r="4.5" fill="${p.ill ? 'var(--card)' : 'var(--ink)'}" stroke="var(--ink)" stroke-width="2"/>`;
     if (i === 0 || i === points.length - 1) s += `<text x="${X(p.d)}" y="${Y(p.v) - 10}" text-anchor="${i === 0 ? 'start' : 'end'}" font-size="12" font-weight="700" style="fill:var(--ink)">${fmt(p.v, digits)}</text>`;
