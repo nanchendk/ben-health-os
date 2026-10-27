@@ -650,7 +650,7 @@ function renderWeek() {
       <div class="mgrid">
         <div class="m"><span>${w.status==='open'?'目前平均體重（非完整週）':'平均體重'}</span><strong>${fmt(w.weightKg.avg, 2)} kg</strong><em>${w.weightKg.historicalOfficial?'歷史正式結案平均':w.weightKg.n+' 天體重紀錄的平均'}</em></div>
         <div class="m"><span>週變化</span>${w.vsPrevWeek ? (w.vsPrevWeek.comparable ? `<strong>${signed(w.vsPrevWeek.deltaKg, 2)} kg</strong><em>${w.status==='open'?'暫時比較，非完整週結算':'與第 '+(w.week-1)+' 週相比'}</em>` : `<strong>不比較</strong><em>${w.excludeFromFatLoss?'本週為干擾週':'前週為干擾週'}</em>`) : '<strong class="muted">—</strong><em>沒有可比較的前週</em>'}</div>
-        <div class="m"><span>蛋白質</span>${w.proteinG.historical ? `<strong>${esc(w.proteinG.rangeText)}</strong><em>歷史營養估算，非每日實測</em>` : w.proteinG.n ? `<strong>${fmt(w.proteinG.avg, 0)} g/日</strong><em>${w.proteinReportedDays} 天紀錄${w.proteinG.includesEstimate?'，含估算':''}</em>` : w.proteinEstimate?.n ? `<strong>${fmt(w.proteinEstimate.min,0)}～${fmt(w.proteinEstimate.max,0)} g/日</strong><em>估算區間，${w.proteinEstimate.n} 天有資料</em>` : '<strong class="muted">待營養估算</strong><em>保留餐點原始紀錄</em>'}</div>
+        <div class="m"><span>蛋白質</span>${w.proteinG.historical ? `<strong>${esc(w.proteinG.rangeText)}</strong><em>歷史營養估算，非每日實測</em>` : w.proteinG.n ? `<strong>${fmt(w.proteinG.avg, 0)} g/日</strong><em>${w.proteinReportedDays} 天紀錄${w.proteinG.includesEstimate?'，含估算':''}</em>` : w.proteinEstimate?.n ? `<strong>${fmt(w.proteinEstimate.min,0)}～${fmt(w.proteinEstimate.max,0)} g/日</strong><em>估算區間，${w.proteinEstimate.n} 天有資料</em>` : w.week===15 && w.kcalPartialCoverage ? `<strong class="muted">無可靠七日平均</strong><em>僅 ${w.kcalPartialCoverage}/7 天有熱量數值；不能代表整週攝取</em>` : '<strong class="muted">待營養估算</strong><em>保留餐點原始紀錄</em>'}</div>
         <div class="m"><span>睡眠</span>${w.sleepH.historical ? `<strong>${esc(w.sleepH.rangeText)}</strong><em>歷史結案估算</em>` : w.sleepH.n ? `<strong>${fmt(w.sleepH.avg, 1)} 小時</strong><em>${w.sleepH.n} 天有紀錄</em>` : '<strong class="muted">未回報</strong><em>無可靠睡眠平均</em>'}</div>
         <div class="m"><span>熱量</span>${w.kcal.historical ? `<strong>${esc(w.kcal.rangeText)}</strong><em>歷史估算，非每日實測</em>` : w.kcal.n ? `<strong>${fmt(w.kcal.avg, 0)} kcal/日</strong><em>${w.kcal.n} 天有紀錄${w.kcal.includesEstimate?'，含估算':''}</em>` : w.calorieEstimate?.n ? `<strong>${fmt(w.calorieEstimate.min,0)}～${fmt(w.calorieEstimate.max,0)} kcal/日</strong><em>估算區間，${w.calorieEstimate.n} 天有資料</em>` : '<strong class="muted">待營養估算</strong><em>保留餐點原始紀錄</em>'}</div>
         <div class="m"><span>每日體重紀錄</span><strong>${w.reportedDays} / 7 天</strong><em>已有每日體重紀錄${w.weightKg.historicalOfficial?'；週平均採正式結案值':''}</em><div class="days">${dots}</div></div>
@@ -1129,6 +1129,9 @@ async function loadRealData(user){
  // 各週均由已入庫每日營養估算計算覆蓋率與區間，不只計算首頁目前週次。
  for(const w of normalized){
    const days=DATA.daily.filter(d=>weekNo(d.date)===w.week);
+   // W15: a single partial calorie entry must not be presented as a weekly daily-intake average.
+   // Preserve source records; show the verified coverage rather than a misleading mean.
+   if(w.week===15 && w.kcal?.n<7 && !w.kcal?.historical){w.kcalPartialCoverage=w.kcal.n;w.kcal={avg:undefined,n:0};}
    for(const [field,kind] of [['calorieEstimate','caloriesKcal'],['proteinEstimate','proteinG']]){
      const vals=days.map(d=>d.nutritionEstimate?.[kind]).filter(v=>v&&Number.isFinite(v.min)&&Number.isFinite(v.max)&&v.min<=v.max);
      w[field]={n:vals.length,min:vals.length?vals.reduce((a,v)=>a+v.min,0)/vals.length:undefined,max:vals.length?vals.reduce((a,v)=>a+v.max,0)/vals.length:undefined};
