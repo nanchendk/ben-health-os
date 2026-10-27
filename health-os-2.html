@@ -540,7 +540,7 @@ function ruler(start, now, prev, target) {
   }
   if (prev !== undefined) s += `<circle cx="${X(prev)}" cy="46" r="5" fill="none" stroke="var(--hero-muted)" stroke-width="1.5"/>`;
   s += `<circle cx="${X(now)}" cy="46" r="8" fill="var(--hero-ink)"/>`;
-  s += `<text x="${X(now)}" y="22" text-anchor="middle" font-size="14" font-weight="700" fill="var(--hero-ink)">現在</text>`;
+  s += `<text x="${Math.max(40, Math.min(w - 40, X(now)))}" y="15" text-anchor="middle" font-size="13" font-weight="700" fill="var(--hero-ink)">現在</text>`;
   s += `<circle cx="${X(target)}" cy="46" r="7" fill="none" stroke="var(--hero-ink)" stroke-width="2"/>`;
   return s + '</svg>';
 }
