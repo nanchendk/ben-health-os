@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Ben Health OS｜Island Lab v0.6.1</title>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Ben Health OS｜Island Lab v0.7</title>
 <style>
 :root{font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif;color:#173d49;background:#e9f5f1}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 70% 20%,#fff9dc,#d6ede8 60%,#c7e3e6);min-height:100vh}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px max(24px,5vw);background:#ffffffb9;backdrop-filter:blur(12px)}.brand{font-size:23px;font-weight:900}.tag{font-size:11px;letter-spacing:3px;color:#527b81}.pill{border-radius:50px;background:#fff;padding:9px 16px;color:#477279;font-size:13px}.layout{max-width:1320px;margin:auto;padding:30px 24px;display:grid;grid-template-columns:1fr 330px;gap:22px}h1{font-size:clamp(34px,5vw,62px);line-height:1.2;margin:10px 0;color:#1b5264}p{line-height:1.7;color:#5e7a7d}.scene{min-height:590px;position:relative;overflow:hidden;border-radius:28px;background:linear-gradient(160deg,#e3f2e2,#b9e2de);box-shadow:0 14px 50px #34676c17}.scene:before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,#ffffff85,transparent 65%)}.islands{position:absolute;inset:85px 0 0;transform:scale(var(--zoom,1));transition:transform .3s}.tile{position:absolute;width:175px;height:165px;border:0;background:none;cursor:pointer;filter:drop-shadow(0 18px 6px #477f7d35);transition:transform .2s;transform:translate(-50%,-50%)}.tile:hover,.tile.active{transform:translate(-50%,-55%) scale(1.08);z-index:5}.hex{position:absolute;inset:15px 3px 18px;clip-path:polygon(50% 0,94% 23%,94% 76%,50% 100%,6% 76%,6% 23%);background:linear-gradient(145deg,#fef9dd,#8ccbc2);border:8px solid #fff6}.tile:nth-child(2n) .hex{background:linear-gradient(140deg,#e8e8ff,#92c6df)}.tile:nth-child(3n) .hex{background:linear-gradient(140deg,#fff2d4,#f2b88c)}.emoji{position:absolute;top:33px;left:0;right:0;font-size:43px;text-shadow:0 3px 5px #fff}.tile strong{position:absolute;bottom:25px;left:18px;right:18px;background:#fffef5ed;border-radius:30px;padding:8px 2px;font-size:13px;box-shadow:0 3px 8px #315e6b18}.tile[data-i="0"]{left:50%;top:21%}.tile[data-i="1"]{left:30%;top:39%}.tile[data-i="2"]{left:70%;top:39%}.tile[data-i="3"]{left:30%;top:70%}.tile[data-i="4"]{left:70%;top:70%}.tile[data-i="5"]{left:50%;top:88%}.controls{position:absolute;right:16px;bottom:18px;display:flex;gap:7px}.controls button,.action{border:0;border-radius:12px;background:#fff;color:#245d6e;padding:11px 16px;cursor:pointer;font-weight:700}.panel{background:#fffffff0;border-radius:26px;padding:25px;box-shadow:0 10px 35px #39696d13;align-self:start}.panel h2{margin:8px 0}.metric{font-size:34px;font-weight:900;color:#1b6884}.small{font-size:13px;color:#607e80}.action{background:#1479b4;color:white;margin:7px 4px 7px 0}.status{padding:12px;background:#eef5f7;border-radius:12px;font-size:13px;line-height:1.7}.notice{font-size:12px;color:#8a6854;margin-top:20px}.foot{padding:14px 25px;text-align:center;font-size:12px;color:#638184}@media(max-width:850px){.layout{grid-template-columns:1fr}.scene{min-height:540px}.tile{width:140px;height:135px}.emoji{top:27px;font-size:32px}.tile strong{bottom:18px;font-size:11px}.islands{inset:75px 0 0}.panel{order:2}}
 </style><style>
@@ -63,7 +63,7 @@ $("logout").onclick=()=>signOut(auth);
 onAuthStateChanged(auth,async u=>{authorized=false;daily=[];body=[];$("login").hidden=!!u;$("logout").hidden=!u;if(!u){$("status").textContent="請以正式網站使用的 Google 帳號登入。";select(selected);return}
 if(u.uid!==ownerUid||!u.providerData.some(p=>p.providerId==="google.com")){$("status").textContent="此帳號未授權讀取私人健康紀錄。";select(selected);return}
 $("status").textContent="已授權，正在唯讀載入 Firestore…";
-try{const [d,b]=await Promise.all([getDocs(query(collection(db,"users",u.uid,"daily"),orderBy("date","desc"),limit(200))),getDocs(collection(db,"users",u.uid,"bodyComposition"))]);daily=d.docs.map(x=>x.data());body=b.docs.map(x=>x.data());authorized=true;$("status").textContent="已連線｜唯讀模式｜每日 "+daily.length+" 筆、體組成 "+body.length+" 筆";select(selected)}catch(e){$("status").textContent="讀取失敗："+(e.code||e.message);select(selected)}});
+try{const [d,b]=await Promise.all([getDocs(query(collection(db,"users",u.uid,"daily"),orderBy("date","desc"),limit(200))),getDocs(collection(db,"users",u.uid,"bodyComposition"))]);daily=d.docs.map(x=>x.data());body=b.docs.map(x=>x.data());authorized=true;window.islandHistoryData={daily,body};$("status").textContent="已連線｜唯讀模式｜每日 "+daily.length+" 筆、體組成 "+body.length+" 筆";select(selected)}catch(e){$("status").textContent="讀取失敗："+(e.code||e.message);select(selected)}});
 select(0);
 </script><script type="module">
 /* Visual layer only: Firestore reads remain exclusively in the original authenticated module. */
@@ -151,11 +151,11 @@ const syncDetail=new MutationObserver(()=>{if(!detailCard.hidden){detailCard.que
 const room=document.createElement("div");room.className="explore-modal";room.hidden=true;room.innerHTML='<section class="explore-room" role="dialog" aria-modal="true" aria-labelledby="room-name"><div class="room-top"><h2 id="room-name"></h2><button id="room-exit">← 返回群島</button></div><div class="room-scene"><div class="room-window"></div><div class="room-board" id="room-board">健康探索站</div><div class="room-counter"></div><div class="room-avatar">🧑🏻‍🌾</div><div class="room-avatar guide">🧑🏻‍⚕️</div><div class="room-actions"><button id="room-talk">💬 與島主對話</button></div></div><div class="room-dialog"><strong id="room-speaker">島嶼管理員</strong><p id="room-message"></p><div class="dialog-choices"><button id="room-read">📊 查看健康紀錄</button><button id="room-guide">🌱 這座島的用途</button></div><div class="room-reading" id="room-reading" hidden></div></div></section>';document.body.append(room);
 let currentRoom=0;
 const roomDescriptions=["健康總部整理你已回報的資料，讓你從全貌出發。","體重島呈現實際晨重，不把疾病或脫水造成的變化當作減脂成果。","飲食島整理已記錄的熱量和蛋白質，沒有回報的數值不會自行補齊。","體態島收藏身體組成紀錄，讓你持續追蹤變化。","睡眠島整理實際睡眠紀錄，幫助觀察恢復狀態。","運動島整理你實際回報的活動紀錄。"];
-function enterRoom(i){currentRoom=i;document.querySelectorAll(".tile")[i].click();room.querySelector("#room-name").textContent="🏡 "+names[i]+" · 探索室";room.querySelector("#room-board").textContent=names[i]+"｜健康探索站";room.querySelector("#room-message").textContent="歡迎登島！你想先了解這座島，還是查看你的健康紀錄？";room.querySelector("#room-reading").hidden=true;room.hidden=false}
+function enterRoom(i){currentRoom=i;document.querySelectorAll(".tile")[i].click();room.querySelector("#room-name").textContent="🏡 "+names[i]+" · 探索室";room.querySelector("#room-board").textContent=names[i]+"｜健康探索站";room.querySelector("#room-message").textContent="歡迎登島！你想先了解這座島，還是查看你的健康紀錄？";room.querySelector("#room-reading").hidden=true;room.hidden=false;window.islandCurrentRoom=i}
 room.querySelector("#room-exit").onclick=()=>{room.hidden=true};
 room.querySelector("#room-talk").onclick=()=>{room.querySelector("#room-message").textContent="很高興見到你！每天的紀錄都值得被好好保存。"};
 room.querySelector("#room-guide").onclick=()=>{room.querySelector("#room-message").textContent=roomDescriptions[currentRoom]};
-room.querySelector("#room-read").onclick=()=>{document.querySelectorAll(".tile")[currentRoom].click();const reading=room.querySelector("#room-reading");reading.textContent=document.getElementById("title").textContent+"｜"+document.getElementById("value").textContent+"｜"+document.getElementById("detail").textContent;reading.hidden=false};
+room.querySelector("#room-read").onclick=()=>{document.querySelectorAll(".tile")[currentRoom].click();const reading=room.querySelector("#room-reading");reading.textContent=document.getElementById("title").textContent+"｜"+document.getElementById("value").textContent+"｜"+document.getElementById("detail").textContent;reading.hidden=false;showHistory(currentRoom,reading)};
 room.addEventListener("click",e=>{if(e.target===room)room.hidden=true});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!room.hidden)room.hidden=true});
 const hint=document.createElement("div");hint.className="three-hint";hint.textContent="島嶼已拉開 · 渡輪航行約 5 秒 · 拖曳旋轉 / 滾輪縮放";sceneEl.append(hint);
@@ -178,4 +178,28 @@ updateCamera();renderer.render(scene,camera);positions.forEach(([x,z],i)=>{const
 animate();
 window.addEventListener("pagehide",()=>{cancelAnimationFrame(frame);ro.disconnect()},{once:true});
 } catch(e){console.warn("3D renderer unavailable; retained accessible 2D island fallback.",e)}
+</script><script>
+function showHistory(i,root){
+ const source=window.islandHistoryData;
+ if(!source){root.textContent="尚未載入已授權的歷史資料，請確認登入狀態。";return}
+ const valid=source.daily.filter(x=>x&&typeof x.date==="string").sort((a,b)=>b.date.localeCompare(a.date));
+ const num=v=>typeof v==="number"&&Number.isFinite(v);
+ let rows=[];
+ if(i===0)rows=valid.map(x=>[x.date,num(x.weightKg)?x.weightKg+" kg":"體重未回報",num(x.sleepHours)?x.sleepHours+" 小時睡眠":"睡眠未回報"]);
+ if(i===1)rows=valid.filter(x=>num(x.weightKg)).map(x=>[x.date,x.weightKg+" kg",x.excludeFromTrend?"排除趨勢":"已回報"]);
+ if(i===2)rows=valid.filter(x=>num(x.caloriesKcal)||num(x.proteinG)).map(x=>[x.date,num(x.caloriesKcal)?x.caloriesKcal+" kcal":"熱量未回報",num(x.proteinG)?"蛋白質 "+x.proteinG+" g":"蛋白質未回報"]);
+ if(i===3)rows=source.body.map(x=>[String(x.date||x.measuredAt||"日期未標示"),num(x.bodyFatPercent)?x.bodyFatPercent+"% 體脂":"身體組成紀錄",num(x.weightKg)?x.weightKg+" kg":"詳情依原始紀錄"]).sort((a,b)=>b[0].localeCompare(a[0]));
+ if(i===4)rows=valid.filter(x=>num(x.sleepHours)).map(x=>[x.date,x.sleepHours+" 小時",typeof x.sleepNotes==="string"?x.sleepNotes:"已回報"]);
+ if(i===5)rows=valid.filter(x=>typeof x.exerciseNotes==="string"&&x.exerciseNotes.trim()).map(x=>[x.date,x.exerciseNotes,"運動紀錄"]);
+ root.replaceChildren();root.style.cssText="display:block;max-height:320px;overflow:auto;margin-top:12px;padding:14px;border-radius:12px;background:#eaf4f0";
+ const heading=document.createElement("strong");heading.textContent="歷史資料｜符合條件 "+rows.length+" 筆（每日資料庫 "+valid.length+" 筆）";root.append(heading);
+ const note=document.createElement("p");note.textContent="僅顯示實際回報資料；沒有資料的日期不補值。體重排除趨勢標記依原始紀錄。";root.append(note);
+ const table=document.createElement("table");table.style.cssText="width:100%;border-collapse:collapse;font-size:13px";
+ const thead=document.createElement("tr");["日期","紀錄","備註"].forEach(v=>{const th=document.createElement("th");th.textContent=v;th.style.cssText="text-align:left;padding:7px;border-bottom:1px solid #b7d4c9";thead.append(th)});table.append(thead);
+ let page=0;const tbody=document.createElement("tbody");table.append(tbody);root.append(table);
+ const nav=document.createElement("div");nav.style.cssText="display:flex;gap:10px;align-items:center;margin-top:10px";root.append(nav);
+ const prev=document.createElement("button"),next=document.createElement("button"),count=document.createElement("span");prev.textContent="上一頁";next.textContent="下一頁";nav.append(prev,count,next);
+ function draw(){tbody.replaceChildren();rows.slice(page*10,page*10+10).forEach(row=>{const tr=document.createElement("tr");row.forEach(v=>{const td=document.createElement("td");td.textContent=v;td.style.cssText="padding:7px;border-bottom:1px solid #d9e8e0";tr.append(td)});tbody.append(tr)});count.textContent=(page+1)+" / "+Math.max(1,Math.ceil(rows.length/10));prev.disabled=page===0;next.disabled=(page+1)*10>=rows.length}
+ prev.onclick=()=>{page--;draw()};next.onclick=()=>{page++;draw()};draw();
+}
 </script></body></html>
