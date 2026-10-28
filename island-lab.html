@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Ben Health OS｜Island Lab v0.3</title>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Ben Health OS｜Island Lab v0.4</title>
 <style>
 :root{font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif;color:#173d49;background:#e9f5f1}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 70% 20%,#fff9dc,#d6ede8 60%,#c7e3e6);min-height:100vh}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px max(24px,5vw);background:#ffffffb9;backdrop-filter:blur(12px)}.brand{font-size:23px;font-weight:900}.tag{font-size:11px;letter-spacing:3px;color:#527b81}.pill{border-radius:50px;background:#fff;padding:9px 16px;color:#477279;font-size:13px}.layout{max-width:1320px;margin:auto;padding:30px 24px;display:grid;grid-template-columns:1fr 330px;gap:22px}h1{font-size:clamp(34px,5vw,62px);line-height:1.2;margin:10px 0;color:#1b5264}p{line-height:1.7;color:#5e7a7d}.scene{min-height:590px;position:relative;overflow:hidden;border-radius:28px;background:linear-gradient(160deg,#e3f2e2,#b9e2de);box-shadow:0 14px 50px #34676c17}.scene:before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,#ffffff85,transparent 65%)}.islands{position:absolute;inset:85px 0 0;transform:scale(var(--zoom,1));transition:transform .3s}.tile{position:absolute;width:175px;height:165px;border:0;background:none;cursor:pointer;filter:drop-shadow(0 18px 6px #477f7d35);transition:transform .2s;transform:translate(-50%,-50%)}.tile:hover,.tile.active{transform:translate(-50%,-55%) scale(1.08);z-index:5}.hex{position:absolute;inset:15px 3px 18px;clip-path:polygon(50% 0,94% 23%,94% 76%,50% 100%,6% 76%,6% 23%);background:linear-gradient(145deg,#fef9dd,#8ccbc2);border:8px solid #fff6}.tile:nth-child(2n) .hex{background:linear-gradient(140deg,#e8e8ff,#92c6df)}.tile:nth-child(3n) .hex{background:linear-gradient(140deg,#fff2d4,#f2b88c)}.emoji{position:absolute;top:33px;left:0;right:0;font-size:43px;text-shadow:0 3px 5px #fff}.tile strong{position:absolute;bottom:25px;left:18px;right:18px;background:#fffef5ed;border-radius:30px;padding:8px 2px;font-size:13px;box-shadow:0 3px 8px #315e6b18}.tile[data-i="0"]{left:50%;top:21%}.tile[data-i="1"]{left:30%;top:39%}.tile[data-i="2"]{left:70%;top:39%}.tile[data-i="3"]{left:30%;top:70%}.tile[data-i="4"]{left:70%;top:70%}.tile[data-i="5"]{left:50%;top:88%}.controls{position:absolute;right:16px;bottom:18px;display:flex;gap:7px}.controls button,.action{border:0;border-radius:12px;background:#fff;color:#245d6e;padding:11px 16px;cursor:pointer;font-weight:700}.panel{background:#fffffff0;border-radius:26px;padding:25px;box-shadow:0 10px 35px #39696d13;align-self:start}.panel h2{margin:8px 0}.metric{font-size:34px;font-weight:900;color:#1b6884}.small{font-size:13px;color:#607e80}.action{background:#1479b4;color:white;margin:7px 4px 7px 0}.status{padding:12px;background:#eef5f7;border-radius:12px;font-size:13px;line-height:1.7}.notice{font-size:12px;color:#8a6854;margin-top:20px}.foot{padding:14px 25px;text-align:center;font-size:12px;color:#638184}@media(max-width:850px){.layout{grid-template-columns:1fr}.scene{min-height:540px}.tile{width:140px;height:135px}.emoji{top:27px;font-size:32px}.tile strong{bottom:18px;font-size:11px}.islands{inset:75px 0 0}.panel{order:2}}
 </style><style>
@@ -12,7 +12,16 @@
 .island-label{position:absolute;transform:translate(-50%,-50%);border:1px solid #ffffffc9;background:#ffffffed;border-radius:30px;padding:7px 12px;box-shadow:0 5px 16px #305b6b27;color:#285c68;font-size:12px;font-weight:800;white-space:nowrap;pointer-events:auto;cursor:pointer}
 .island-label:hover{background:#fff2ca}
 .scene .three-hint{position:absolute;top:18px;left:18px;z-index:5;border-radius:20px;background:#ffffffb5;padding:8px 13px;color:#4b7476;font-size:12px;pointer-events:none}
-</style><style>.island-detail{position:absolute;z-index:8;left:18px;bottom:18px;width:min(350px,calc(100% - 36px));background:#fffffff2;border-radius:18px;padding:18px;box-shadow:0 12px 35px #215a6130;backdrop-filter:blur(14px)}.island-detail[hidden]{display:none}.island-detail h3{margin:0 30px 6px 0;color:#245a68}.island-detail .island-value{font-size:29px;font-weight:900;color:#1479a2}.island-detail p{margin:5px 0;font-size:13px}.island-detail button{position:absolute;right:10px;top:10px;border:0;background:#edf5f5;border-radius:20px;padding:5px 10px;cursor:pointer}.island-label.is-selected{background:#166d9b;color:#fff}.scene .controls{bottom:auto;top:16px;right:16px}</style></head><body>
+</style><style>.island-detail{position:absolute;z-index:8;left:18px;bottom:18px;width:min(350px,calc(100% - 36px));background:#fffffff2;border-radius:18px;padding:18px;box-shadow:0 12px 35px #215a6130;backdrop-filter:blur(14px)}.island-detail[hidden]{display:none}.island-detail h3{margin:0 30px 6px 0;color:#245a68}.island-detail .island-value{font-size:29px;font-weight:900;color:#1479a2}.island-detail p{margin:5px 0;font-size:13px}.island-detail button{position:absolute;right:10px;top:10px;border:0;background:#edf5f5;border-radius:20px;padding:5px 10px;cursor:pointer}.island-label.is-selected{background:#166d9b;color:#fff}.scene .controls{bottom:auto;top:16px;right:16px}</style><style>
+.scene{background:linear-gradient(150deg,#9bd9dc,#c6edf0)!important}
+.scene .three-hint{top:58px}
+.voyage-bar{position:absolute;z-index:9;top:12px;left:12px;display:flex;gap:7px;flex-wrap:wrap;max-width:75%}
+.voyage-bar button{border:1px solid #ffffffb9;background:#ffffffed;border-radius:20px;padding:9px 12px;color:#256477;font-weight:800;cursor:pointer;box-shadow:0 3px 12px #174e5b18}
+.voyage-bar button.active{background:#176d91;color:white}
+.voyage-map{position:absolute;z-index:10;top:60px;left:12px;background:#fffffff2;padding:15px;border-radius:18px;box-shadow:0 15px 35px #184f6133;width:240px}
+.voyage-map[hidden]{display:none}.voyage-map button{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #e0eaea;background:none;padding:10px;color:#245c70;cursor:pointer}
+.voyage-caption{font-size:12px;color:#527b81;margin:0 0 7px}
+</style></head><body>
 <header class="top"><div><div class="tag">EXPERIMENTAL · READ ONLY</div><div class="brand">🌿 BEN HEALTH ISLAND</div></div><div class="pill">Island Lab v0.3 · 3D 測試版</div></header>
 <main class="layout"><div><div class="tag">A LITTLE ISLAND OF BETTER HABITS</div><h1>每一天的紀錄，<br>都是島嶼的養分。</h1><p>探索六座健康小島。登入後，只讀取你既有的私人 Firestore 健康資料。</p><div class="scene"><div class="islands" id="islands"></div><div class="controls"><button id="plus">＋</button><button id="minus">－</button><button id="reset">重設</button></div></div></div>
 <aside class="panel"><div class="tag">ISLAND EXPLORER</div><h2 id="title">🏡 健康總部</h2><p id="desc">選一座島，看看你累積的健康紀錄。</p><div class="metric" id="value">等待登入</div><p class="small" id="detail">不使用假數據，也不會修改正式紀錄。</p><div id="status" class="status">正在確認登入狀態…</div><button id="login" class="action" hidden>Google 登入</button><button id="logout" class="action" hidden>登出</button><p><a href="./index.html">↗ 返回正式健康儀表板</a></p><p class="notice">本頁為隔離測試介面，所有資料僅供本人檢視；不會將私人健康數據寫入 GitHub。</p></aside></main><footer class="foot">Ben Health OS · Island Lab · 測試介面，不取代正式網站</footer>
@@ -87,7 +96,14 @@ positions.forEach(([x,z],i)=>{
 });
 const floor=mesh(new THREE.PlaneGeometry(200,200),new THREE.ShadowMaterial({opacity:.12}),scene,0,-.59,0);floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;
 let theta=.55,phi=.82,distance=17,dragging=false,moved=false,lastX=0,lastY=0;
-const target=new THREE.Vector3(0,0,.35);
+const target=new THREE.Vector3(0,0,.35),destination=target.clone();let traveling=false;
+const sea=mesh(new THREE.PlaneGeometry(200,200),new THREE.MeshStandardMaterial({color:0x7fcbd3,transparent:true,opacity:.62,roughness:.35}),scene,0,-.64,0);sea.rotation.x=-Math.PI/2;
+const routeMat=new THREE.LineDashedMaterial({color:0xffffff,dashSize:.23,gapSize:.18,transparent:true,opacity:.75});
+for(let i=1;i<positions.length;i++){const [x,z]=positions[i],points=[new THREE.Vector3(0,-.01,-2.85),new THREE.Vector3(x,-.01,z)];const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),routeMat);line.computeLineDistances();scene.add(line)}
+const ferry=new THREE.Group();scene.add(ferry);box(ferry,0,.13,0,.42,.19,.78,mat("#fff9e8"));box(ferry,0,.31,-.08,.28,.22,.3,roofBlue);ferry.position.set(0,0,-.2);
+let boatStart=new THREE.Vector3(0,0,-.2),boatEnd=boatStart.clone(),boatProgress=1;
+function voyage(i){const [x,z]=positions[i];destination.set(x,0,z);distance=Math.min(distance,13);traveling=true;boatStart.copy(ferry.position);boatEnd.set(x,0,z);boatProgress=0;openIsland(i)}
+
 function updateCamera(){camera.position.set(target.x+distance*Math.sin(phi)*Math.sin(theta),target.y+distance*Math.cos(phi),target.z+distance*Math.sin(phi)*Math.cos(theta));camera.lookAt(target)}
 function resize(){const w=sceneEl.clientWidth,h=sceneEl.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false)}
 const labels=document.createElement("div");labels.className="island-labels";sceneEl.append(labels);
@@ -105,11 +121,18 @@ detailCard.querySelector(".island-sub").textContent=document.getElementById("det
 detailCard.querySelector(".island-status").textContent=document.getElementById("status").textContent;
 }
 function openIsland(i){document.querySelectorAll(".tile")[i].click();refreshCard(i);detailCard.hidden=false}
-buttons.forEach((b,i)=>b.onclick=()=>openIsland(i));
+buttons.forEach((b,i)=>b.onclick=()=>voyage(i));
 document.querySelectorAll(".tile").forEach((b,i)=>b.addEventListener("click",()=>{if(!detailCard.hidden)refreshCard(i)}));
+const bar=document.createElement("nav");bar.className="voyage-bar";bar.setAttribute("aria-label","群島探索操作");bar.innerHTML='<button id="voyage-home">🏠 群島全覽</button><button id="voyage-map-toggle">🗺️ 群島地圖</button><button id="voyage-next">⛵ 前往下一島</button>';sceneEl.append(bar);
+const mapPanel=document.createElement("div");mapPanel.className="voyage-map";mapPanel.hidden=true;mapPanel.innerHTML='<p class="voyage-caption">選擇目的地 · 渡輪出發</p>'+names.map((n,i)=>'<button data-dest="'+i+'">⛵ '+n+'</button>').join("");sceneEl.append(mapPanel);
+mapPanel.querySelectorAll("[data-dest]").forEach(b=>b.onclick=()=>{voyage(Number(b.dataset.dest));mapPanel.hidden=true});
+bar.querySelector("#voyage-map-toggle").onclick=()=>mapPanel.hidden=!mapPanel.hidden;
+bar.querySelector("#voyage-home").onclick=()=>{destination.set(0,0,.35);distance=17;traveling=true;detailCard.hidden=true};
+bar.querySelector("#voyage-next").onclick=()=>{const current=buttons.findIndex(b=>b.classList.contains("is-selected"));voyage((current+1)%6)};
+const syncDetail=new MutationObserver(()=>{if(!detailCard.hidden){detailCard.querySelector(".island-value").textContent=document.getElementById("value").textContent;detailCard.querySelector(".island-sub").textContent=document.getElementById("detail").textContent;detailCard.querySelector(".island-status").textContent=document.getElementById("status").textContent}});["value","detail","status"].forEach(id=>syncDetail.observe(document.getElementById(id),{childList:true,characterData:true,subtree:true}));
 const hint=document.createElement("div");hint.className="three-hint";hint.textContent="拖曳旋轉 · 滾輪縮放 · 點擊島嶼";sceneEl.append(hint);
 const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();
-function hit(e){const rect=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);ray.setFromCamera(pointer,camera);const hits=ray.intersectObjects(clickable,true);if(hits.length){let p=hits[0].object;while(p&&!clickable.includes(p))p=p.parent;const i=clickable.indexOf(p);if(i>=0)openIsland(i)}}
+function hit(e){const rect=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);ray.setFromCamera(pointer,camera);const hits=ray.intersectObjects(clickable,true);if(hits.length){let p=hits[0].object;while(p&&!clickable.includes(p))p=p.parent;const i=clickable.indexOf(p);if(i>=0)voyage(i)}}
 renderer.domElement.addEventListener("pointerdown",e=>{dragging=true;moved=false;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId)});
 renderer.domElement.addEventListener("pointermove",e=>{if(!dragging)return;const dx=e.clientX-lastX,dy=e.clientY-lastY;if(Math.abs(dx)+Math.abs(dy)>2)moved=true;theta-=dx*.006;phi=Math.max(.28,Math.min(1.45,phi+dy*.005));lastX=e.clientX;lastY=e.clientY});
 renderer.domElement.addEventListener("pointerup",e=>{if(!moved)hit(e);dragging=false});
@@ -120,7 +143,10 @@ document.getElementById("reset").addEventListener("click",()=>{theta=.55;phi=.82
 const ro=new ResizeObserver(resize);ro.observe(sceneEl);resize();
 document.querySelector(".islands").classList.add("is-3d");
 let frame=0;
-function animate(){frame=requestAnimationFrame(animate);updateCamera();renderer.render(scene,camera);positions.forEach(([x,z],i)=>{const p=new THREE.Vector3(x,1.9,z).project(camera);buttons[i].style.left=(p.x*.5+.5)*sceneEl.clientWidth+"px";buttons[i].style.top=(-p.y*.5+.5)*sceneEl.clientHeight+"px";buttons[i].hidden=p.z>1});}
+function animate(){frame=requestAnimationFrame(animate);
+if(traveling){target.lerp(destination,.065);if(target.distanceTo(destination)<.018){target.copy(destination);traveling=false}}
+if(boatProgress<1){boatProgress=Math.min(1,boatProgress+.008);ferry.position.lerpVectors(boatStart,boatEnd,boatProgress);ferry.position.y=Math.sin(boatProgress*Math.PI)*.12;ferry.rotation.y=Math.atan2(boatEnd.x-boatStart.x,boatEnd.z-boatStart.z)}
+updateCamera();renderer.render(scene,camera);positions.forEach(([x,z],i)=>{const p=new THREE.Vector3(x,1.9,z).project(camera);buttons[i].style.left=(p.x*.5+.5)*sceneEl.clientWidth+"px";buttons[i].style.top=(-p.y*.5+.5)*sceneEl.clientHeight+"px";buttons[i].hidden=p.z>1});}
 animate();
 window.addEventListener("pagehide",()=>{cancelAnimationFrame(frame);ro.disconnect()},{once:true});
 } catch(e){console.warn("3D renderer unavailable; retained accessible 2D island fallback.",e)}
