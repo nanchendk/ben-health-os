@@ -654,7 +654,7 @@ function renderWeek() {
       <p class="small muted">已結案：有 closed 標記或經核對的正式修訂歷史；已入庫：尚無結案依據；尚未同步：資料庫無當日紀錄。</p>
       <div class="strip">${Array.from({length:7},(_,i)=>{const date=addDays(start,i),d=dailyMap[date],state=d?(d.status==='closed'||d.revised?'已結案':'已入庫'):(date>DATA.today?'未到日期':'尚未同步');return '<div class="cell'+(d?'':' none')+'"><span>'+md(date)+'</span><b>'+state+'</b></div>'}).join('')}</div>
     </section>
-    ${true ? `<section class="panel" aria-labelledby="h-nutrition-v41">
+    <section class="panel" aria-labelledby="h-nutrition-v41">
       <h2 id="h-nutrition-v41">V4.1｜五大營養目標・實際比較</h2>
       <p class="small muted">V4.1 於 2026/11/02 正式啟用；歷史週次為統一標準回溯比較，非當時採用的目標。僅採用已同步的實際紀錄；缺漏不視為零，估算區間不強制判定達標。此區不代表尚未同步的對話回報已入庫。</p>
       <div class="mgrid">${[
@@ -673,7 +673,7 @@ function renderWeek() {
         return '<div class="m"><span>'+name+'</span><strong>'+(avg===null?'未回報':fmt(avg,1)+' '+unit)+'</strong><em>目標 '+goal+' '+unit+'｜'+diff+'</em><em>達成率 '+(pct===null?'無法判定':fmt(pct,1)+'%')+'｜有效 '+values.length+'/7 天</em></div>';
       }).join('')}</div>
       <p class="small muted">顯示值為有完整數值紀錄日的平均，不代表當週七天完整攝取；僅有估算區間的資料不會被當成精確數字。</p>
-    </section>` : ''}
+    </section>
     <section aria-labelledby="h-goals">
       <h2 id="h-goals">本週健康摘要</h2>
       <div class="mgrid">
@@ -1114,7 +1114,7 @@ async function loadRealData(user){
  const names=['daily','weeks','bodyComposition','labs','weeklyHistorical','dailyRevisions'];
  const snaps=await Promise.all(names.map(n=>getDocs(collection(db,'users',user.uid,n))));
  const all=Object.fromEntries(names.map((n,i)=>[n,snaps[i].docs.map(d=>({id:d.id,...d.data()}))]));
- DATA.daily.splice(0,DATA.daily.length,...all.daily.filter(x=>/^\d{4}-\d\d-\d\d$/.test(x.date||x.id)).map(x=>({date:x.date||x.id,weightKg:numeric(x,'weightKg'),sleepH:numeric(x,'sleepHours','sleepH'),waterMl:numeric(x,'waterMl'),proteinG:numeric(x,'proteinG'),notes:x.notes||'',status:x.status||'',revised:all.dailyRevisions.some(h=>h.date===(x.date||x.id)),meals:Array.isArray(x.meals)?x.meals:[],kcal:numeric(x,'caloriesKcal','kcal'),nutritionEstimate:x.nutritionEstimate||null,estimated:[]})).sort((a,b)=>a.date.localeCompare(b.date)));
+ DATA.daily.splice(0,DATA.daily.length,...all.daily.filter(x=>/^\d{4}-\d\d-\d\d$/.test(x.date||x.id)).map(x=>({date:x.date||x.id,weightKg:numeric(x,'weightKg'),sleepH:numeric(x,'sleepHours','sleepH'),waterMl:numeric(x,'waterMl'),proteinG:numeric(x,'proteinG'),carbsG:numeric(x,'carbsG','carbohydratesG'),fatG:numeric(x,'fatG'),fiberG:numeric(x,'fiberG','dietaryFiberG'),caloriesKcal:numeric(x,'caloriesKcal','kcal'),notes:x.notes||'',status:x.status||'',revised:all.dailyRevisions.some(h=>h.date===(x.date||x.id)),meals:Array.isArray(x.meals)?x.meals:[],kcal:numeric(x,'caloriesKcal','kcal'),nutritionEstimate:x.nutritionEstimate||null,estimated:[]})).sort((a,b)=>a.date.localeCompare(b.date)));
  // 歷史日資料與即時 daily 分離保存，缺筆才補顯示，不覆蓋當前資料庫。
  const historicalDaily=all.weeklyHistorical.flatMap(h=>Array.isArray(h.historicalDaily)?h.historicalDaily:[]);
  // 從已核對的歷史每日文字擷取既有營養估算（僅顯示、不回寫 Firestore）。
