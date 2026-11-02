@@ -666,11 +666,13 @@ function renderWeek() {
       ].map(([name,key,min,max,unit])=>{
         const entries=Array.from({length:7},(_,i)=>dailyMap[addDays(start,i)]).filter(Boolean);
         const values=entries.map(d=>Number.isFinite(d[key])?d[key]:(key==='caloriesKcal'&&Number.isFinite(d.kcal)?d.kcal:null)).filter(Number.isFinite);
+        const ranges=entries.map(d=>d.nutritionEstimate?.[key]).filter(v=>v&&Number.isFinite(v.min)&&Number.isFinite(v.max)&&v.min<=v.max);
         const avg=values.length?values.reduce((a,b)=>a+b,0)/values.length:null;
+        const range=ranges.length?{min:ranges.reduce((n,v)=>n+v.min,0)/ranges.length,max:ranges.reduce((n,v)=>n+v.max,0)/ranges.length}:null;
         const goal=min===max?fmt(min,0):fmt(min,0)+'–'+fmt(max,0);
-        const pct=avg===null?null:avg/(min===max?min:min)*100;
-        const diff=avg===null?'無法判定':(avg<min?'距下限 '+fmt(min-avg,1):avg>max?'超過上限 '+fmt(avg-max,1):'在目標區間');
-        return '<div class="m"><span>'+name+'</span><strong>'+(avg===null?'未回報':fmt(avg,1)+' '+unit)+'</strong><em>目標 '+goal+' '+unit+'｜'+diff+'</em><em>達成率 '+(pct===null?'無法判定':fmt(pct,1)+'%')+'｜有效 '+values.length+'/7 天</em></div>';
+        const pct=avg!==null?fmt(avg/min*100,1)+'%':range?fmt(range.min/min*100,1)+'～'+fmt(range.max/min*100,1)+'%':'無法判定';
+        const diff=avg===null?'估算區間，不判定精確差異':(avg<min?'距下限 '+fmt(min-avg,1):avg>max?'超過上限 '+fmt(avg-max,1):'在目標區間');
+        return '<div class="m"><span>'+name+'</span><strong>'+(avg!==null?fmt(avg,1)+' '+unit:range?fmt(range.min,1)+'～'+fmt(range.max,1)+' '+unit:'無可用數值')+'</strong><em>目標 '+goal+' '+unit+'｜'+diff+'</em><em>達成率 ' +pct+'｜'+(values.length?'數值 '+values.length+'/7 天':ranges.length?'估算 '+ranges.length+'/7 天':'無有效數值')</em></div>';
       }).join('')}</div>
       <p class="small muted">顯示值為有完整數值紀錄日的平均，不代表當週七天完整攝取；僅有估算區間的資料不會被當成精確數字。</p>
     </section>
