@@ -412,7 +412,7 @@ window.addEventListener('unhandledrejection',function(e){var x=document.getEleme
 ------------------------------------------------------------------- */
 const DATA = {
  today: new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Taipei'}),
- config:{week1Start:'2026-07-13',targetWeightKg:80,targets:{proteinMinG:120,proteinMaxG:150,trainingPerWeek:3}},
+ config:{week1Start:'2026-07-13',targetWeightKg:80,targets:{caloriesKcal:1600,proteinMinG:120,proteinMaxG:140,carbsG:140,fatG:58,fiberMinG:25,fiberMaxG:35,trainingPerWeek:3}},
  lastSync:{finishedAt:null,commit:'Firestore',counts:{created:0,updated:0},readBack:{expected:0,matched:0}},
  weeks:[],daily:[],bodyComposition:[],medicalIndex:[]
 };
@@ -654,6 +654,26 @@ function renderWeek() {
       <p class="small muted">已結案：有 closed 標記或經核對的正式修訂歷史；已入庫：尚無結案依據；尚未同步：資料庫無當日紀錄。</p>
       <div class="strip">${Array.from({length:7},(_,i)=>{const date=addDays(start,i),d=dailyMap[date],state=d?(d.status==='closed'||d.revised?'已結案':'已入庫'):(date>DATA.today?'未到日期':'尚未同步');return '<div class="cell'+(d?'':' none')+'"><span>'+md(date)+'</span><b>'+state+'</b></div>'}).join('')}</div>
     </section>
+    ${w.week>=17 ? `<section class="panel" aria-labelledby="h-nutrition-v41">
+      <h2 id="h-nutrition-v41">V4.1｜五大營養目標・實際比較</h2>
+      <p class="small muted">自 2026/11/02 起適用。僅採用已同步的實際紀錄；缺漏不視為零，估算區間不強制判定達標。此區不代表尚未同步的對話回報已入庫。</p>
+      <div class="mgrid">${[
+        ['熱量','caloriesKcal',T.caloriesKcal,T.caloriesKcal,'kcal'],
+        ['蛋白質','proteinG',T.proteinMinG,T.proteinMaxG,'g'],
+        ['碳水化合物','carbsG',T.carbsG,T.carbsG,'g'],
+        ['脂肪','fatG',T.fatG,T.fatG,'g'],
+        ['膳食纖維','fiberG',T.fiberMinG,T.fiberMaxG,'g']
+      ].map(([name,key,min,max,unit])=>{
+        const entries=Array.from({length:7},(_,i)=>dailyMap[addDays(start,i)]).filter(Boolean);
+        const values=entries.map(d=>Number.isFinite(d[key])?d[key]:(key==='caloriesKcal'&&Number.isFinite(d.kcal)?d.kcal:null)).filter(Number.isFinite);
+        const avg=values.length?values.reduce((a,b)=>a+b,0)/values.length:null;
+        const goal=min===max?fmt(min,0):fmt(min,0)+'–'+fmt(max,0);
+        const pct=avg===null?null:avg/(min===max?min:min)*100;
+        const diff=avg===null?'無法判定':(avg<min?'距下限 '+fmt(min-avg,1):avg>max?'超過上限 '+fmt(avg-max,1):'在目標區間');
+        return '<div class="m"><span>'+name+'</span><strong>'+(avg===null?'未回報':fmt(avg,1)+' '+unit)+'</strong><em>目標 '+goal+' '+unit+'｜'+diff+'</em><em>達成率 '+(pct===null?'無法判定':fmt(pct,1)+'%')+'｜有效 '+values.length+'/7 天</em></div>';
+      }).join('')}</div>
+      <p class="small muted">顯示值為有完整數值紀錄日的平均，不代表當週七天完整攝取；僅有估算區間的資料不會被當成精確數字。</p>
+    </section>` : ''}
     <section aria-labelledby="h-goals">
       <h2 id="h-goals">本週健康摘要</h2>
       <div class="mgrid">
