@@ -672,7 +672,7 @@ function renderWeek() {
         const goal=min===max?fmt(min,0):fmt(min,0)+'–'+fmt(max,0);
         const pct=avg!==null?fmt(avg/min*100,1)+'%':range?fmt(range.min/min*100,1)+'～'+fmt(range.max/min*100,1)+'%':'無法判定';
         const diff=avg===null?'估算區間，不判定精確差異':(avg<min?'距下限 '+fmt(min-avg,1):avg>max?'超過上限 '+fmt(avg-max,1):'在目標區間');
-        return '<div class="m"><span>'+name+'</span><strong>'+(avg!==null?fmt(avg,1)+' '+unit:range?fmt(range.min,1)+'～'+fmt(range.max,1)+' '+unit:'無可用數值')+'</strong><em>目標 '+goal+' '+unit+'｜'+diff+'</em><em>達成率 ' +pct+'｜'+(values.length?'數值 '+values.length+'/7 天':ranges.length?'估算 '+ranges.length+'/7 天':'無有效數值')</em></div>';
+        return '<div class="m"><span>'+name+'</span><strong>'+(avg!==null?fmt(avg,1)+' '+unit:range?fmt(range.min,1)+'～'+fmt(range.max,1)+' '+unit:'無可用數值')+'</strong><em>目標 '+goal+' '+unit+'｜'+diff+'</em><em>達成率 ' +pct+'｜'+(values.length?'數值 '+values.length+'/7 天':ranges.length?'估算 '+ranges.length+'/7 天':'無有效數值')+'</em></div>';
       }).join('')}</div>
       <p class="small muted">顯示值為有完整數值紀錄日的平均，不代表當週七天完整攝取；僅有估算區間的資料不會被當成精確數字。</p>
     </section>
