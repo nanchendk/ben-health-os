@@ -665,16 +665,23 @@ function renderWeek() {
         ['膳食纖維','fiberG',T.fiberMinG,T.fiberMaxG,'g']
       ].map(([name,key,min,max,unit])=>{
         const entries=Array.from({length:7},(_,i)=>dailyMap[addDays(start,i)]).filter(Boolean);
-        const values=entries.map(d=>Number.isFinite(d[key])?d[key]:(key==='caloriesKcal'&&Number.isFinite(d.kcal)?d.kcal:null)).filter(Number.isFinite);
-        const ranges=entries.map(d=>d.nutritionEstimate?.[key]).filter(v=>v&&Number.isFinite(v.min)&&Number.isFinite(v.max)&&v.min<=v.max);
-        const avg=values.length?values.reduce((a,b)=>a+b,0)/values.length:null;
-        const range=ranges.length?{min:ranges.reduce((n,v)=>n+v.min,0)/ranges.length,max:ranges.reduce((n,v)=>n+v.max,0)/ranges.length}:null;
-        const goal=min===max?fmt(min,0):fmt(min,0)+'–'+fmt(max,0);
-        const pct=avg!==null?fmt(avg/min*100,1)+'%':range?fmt(range.min/min*100,1)+'～'+fmt(range.max/min*100,1)+'%':'無法判定';
-        const diff=avg===null?'估算區間，不判定精確差異':(avg<min?'距下限 '+fmt(min-avg,1):avg>max?'超過上限 '+fmt(avg-max,1):'在目標區間');
-        return '<div class="m"><span>'+name+'</span><strong>'+(avg!==null?fmt(avg,1)+' '+unit:range?fmt(range.min,1)+'～'+fmt(range.max,1)+' '+unit:'無可用數值')+'</strong><em>目標 '+goal+' '+unit+'｜'+diff+'</em><em>達成率 ' +pct+'｜'+(values.length?'數值 '+values.length+'/7 天':ranges.length?'估算 '+ranges.length+'/7 天':'無有效數值')+'</em></div>';
+        const observations=entries.map(d=>{
+          const exact=Number.isFinite(d[key])?d[key]:(key==='caloriesKcal'&&Number.isFinite(d.kcal)?d.kcal:null);
+          if(exact!==null)return {lo:exact,hi:exact,estimated:false};
+          const v=d.nutritionEstimate?.[key];
+          return v&&Number.isFinite(v.min)&&Number.isFinite(v.max)&&v.min<=v.max?{lo:v.min,hi:v.max,estimated:true}:null;
+        }).filter(Boolean);
+        const n=observations.length;
+        const lo=n?observations.reduce((sum,v)=>sum+v.lo,0)/n:null;
+        const hi=n?observations.reduce((sum,v)=>sum+v.hi,0)/n:null;
+        const estimated=observations.filter(v=>v.estimated).length;
+        const goal=min===max?fmt(min,0):fmt(min,0)+'～'+fmt(max,0);
+        const shown=n?(lo===hi?fmt(lo,1):fmt(lo,1)+'～'+fmt(hi,1)):'未回報';
+        const pct=n?(lo===hi?fmt(lo/min*100,1)+'%':fmt(lo/min*100,1)+'～'+fmt(hi/min*100,1)+'%'):'無法計算';
+        const diff=!n?'無資料':lo>=min&&hi<=max?'落在目標區間':hi<min?'低於目標下限':lo>max?'高於目標上限':'估算跨越目標界線';
+        return '<div class="m"><span>'+name+'</span><strong>'+shown+' '+unit+'</strong><em>目標 '+goal+' '+unit+'｜'+diff+'</em><em>達標率 '+pct+'（平均攝取 ÷ 目標下限）</em><em>有效 '+n+'/7 天｜其中估算 '+estimated+' 天</em></div>';
       }).join('')}</div>
-      <p class="small muted">顯示值為有完整數值紀錄日的平均，不代表當週七天完整攝取；僅有估算區間的資料不會被當成精確數字。</p>
+      <p class="small muted">週平均＝有資料日期的攝取量合計 ÷ 有資料天數；週達標率＝週平均 ÷ 每日目標下限 × 100%。同週精確數值與估算區間逐日合併，缺漏不算零；估算仍顯示區間，不視為精確實測。</p>
     </section>
     <section aria-labelledby="h-goals">
       <h2 id="h-goals">本週健康摘要</h2>
