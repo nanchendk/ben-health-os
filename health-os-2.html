@@ -926,7 +926,7 @@ function renderMedicalUnlocked(){
  const inbody=combined.filter(x=>typeof x.data.bodyFatPct==='number'||typeof x.data.skeletalMuscleKg==='number').map(x=>x.data);
  
  const single=(record,field,title)=>record?'<section class="panel"><h2>'+esc(title)+' · '+esc(record.date)+'</h2>'+medTable(['項目','結果'],Object.entries(record[field]||{}).map(([k,v])=>[MED_LABELS[k]||v?.label||k,String(medVal(v))+(medUnit(v)?' '+medUnit(v):'')]))+'</section>':'<section class="panel">沒有這一天的可用紀錄。</section>';
- const byDate=arr=>[...arr].sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+ const byDate=arr=>[...arr].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
  const clinicRows=byDate(labs),annualRows=byDate(annual),urineRows=byDate(urine),imageRows=byDate(scans),bodyRows=byDate(inbody);
  const renderUrine=records=>records.length?medTable(['日期','項目','結果'],records.flatMap(x=>Object.entries(x.urine||{}).map(([k,v])=>[x.date,MED_LABELS[k]||k,typeof v==='object'?JSON.stringify(v):v]))):'<section class="panel">目前沒有已匯入的尿液檢驗數據。</section>';
  const medSections={
