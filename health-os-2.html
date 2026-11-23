@@ -1196,27 +1196,15 @@ async function loadRealData(user){
  for(const k of Object.keys(byWeek))delete byWeek[k];
  DATA.weeks.forEach(w=>byWeek[w.week]=w);
  for(let i=1;i<DATA.weeks.length;i++){const a=DATA.weeks[i-1],b=DATA.weeks[i];b.vsPrevWeek={deltaKg:b.weightKg.avg-a.weightKg.avg,comparable:!a.excludeFromFatLoss&&!b.excludeFromFatLoss&&b.week===a.week+1}}
- // 首頁固定呈現 Firestore 最新有晨重紀錄的週；新週有第一筆正式紀錄後才切換，避免週一顯示空白。
- const lastRecordedDay=all.daily.filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d.date||'')&&Number.isFinite(d.weightKg)&&d.date<=DATA.today).map(d=>d.date).sort().at(-1);
+ // 未正式同步的新週不建立週報，也不顯示在週次選單或趨勢圖。
+ // 保留 Firestore 原始資料；僅調整網站可見的正式週次。
  const actualWeek=weekNo(DATA.today);
- if(actualWeek>0 && actualWeek<=53){
-   const existing=byWeek[actualWeek];
-   const weekDays=DATA.daily.filter(d=>weekNo(d.date)===actualWeek&&typeof d.weightKg==='number');
-   if(!existing){
-     const avg=weekDays.length?weekDays.reduce((n,d)=>n+d.weightKg,0)/weekDays.length:undefined;
-     const draft={week:actualWeek,status:'open',reportedDays:weekDays.length,weightKg:{avg,n:weekDays.length},proteinG:{avg:undefined,n:0},proteinTargetHitDays:0,proteinReportedDays:0,trainingDays:0,trainingReportedDays:0,sleepH:{avg:undefined,n:0},waterMl:{avg:undefined,n:0},kcal:{avg:undefined,n:0},interference:[],excludeFromFatLoss:false,note:'當週未結案；僅顯示已核對並同步至 Firestore 的資料',strategy:''};
-     DATA.weeks.push(draft);DATA.weeks.sort((a,b)=>a.week-b.week);byWeek[actualWeek]=draft;
-   }
-   // 僅以已正式結案且入庫的晨重決定新週是否啟用；排除出國週。
-   const publishedWeeks=all.daily.filter(d=>d.status==='closed'&&Number.isFinite(d.weightKg)&&/^\d{4}-\d{2}-\d{2}$/.test(d.date||d.id||'')).map(d=>weekNo(d.date||d.id));
-   const lastPublished=Math.max(0,...publishedWeeks);
-   const eligible=DATA.weeks.filter(w=>w.week<=actualWeek&&Number.isFinite(w.weightKg.avg)&&!w.excludeFromFatLoss&&(w.status==='closed'||w.week===lastPublished));
-   current=eligible.at(-1)||null;
-   const prior=byWeek[actualWeek-1];
-   if(prior&&current.weightKg.avg!==undefined&&prior.weightKg.avg!==undefined){
-     current.vsPrevWeek={deltaKg:current.weightKg.avg-prior.weightKg.avg,comparable:!prior.excludeFromFatLoss&&!current.excludeFromFatLoss};
-   }
- }else current=DATA.weeks.at(-1);
+ const publishedWeeks=new Set(all.daily.filter(d=>d.status==='closed'&&Number.isFinite(d.weightKg)&&/^\d{4}-\d{2}-\d{2}$/.test(d.date||d.id||'')).map(d=>weekNo(d.date||d.id)));
+ const visibleWeeks=DATA.weeks.filter(w=>w.week!==actualWeek || (Number.isFinite(w.weightKg.avg) && (publishedWeeks.has(w.week)||w.status==='closed')));
+ DATA.weeks.splice(0,DATA.weeks.length,...visibleWeeks);
+ for(const k of Object.keys(byWeek))delete byWeek[k];
+ DATA.weeks.forEach(w=>byWeek[w.week]=w);
+ current=DATA.weeks.filter(w=>Number.isFinite(w.weightKg.avg)&&!w.excludeFromFatLoss&&(w.status==='closed'||publishedWeeks.has(w.week))).at(-1)||null;
  // 對當前週（含未建立 weeks 文件的進行中週）以已同步每日數值重新統計。
  // null / 缺漏不列入分母，且絕不把營養估算當成正式實測。
  if(current){
