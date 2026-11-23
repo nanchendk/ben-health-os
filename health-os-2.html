@@ -1204,7 +1204,7 @@ async function loadRealData(user){
  DATA.weeks.splice(0,DATA.weeks.length,...visibleWeeks);
  for(const k of Object.keys(byWeek))delete byWeek[k];
  DATA.weeks.forEach(w=>byWeek[w.week]=w);
- current=DATA.weeks.filter(w=>Number.isFinite(w.weightKg.avg)&&!w.excludeFromFatLoss&&(w.status==='closed'||publishedWeeks.has(w.week))).at(-1)||null;
+ current=DATA.weeks.filter(w=>w.status==='closed'||publishedWeeks.has(w.week)).at(-1)||null; // 最近已結案週（含出國排除週），不以是否有平均體重決定
  // 對當前週（含未建立 weeks 文件的進行中週）以已同步每日數值重新統計。
  // null / 缺漏不列入分母，且絕不把營養估算當成正式實測。
  if(current){
@@ -1231,7 +1231,16 @@ async function loadRealData(user){
  DATA.lastSync.readBack.matched=0;
  if(!current){document.querySelector('#v-week').innerHTML='<section class="panel"><h2>尚無週報</h2><p>Firestore 尚無可用的週報資料，請先核對資料匯入狀態。</p></section>';renderSync();renderBody();renderMedicalLocked();route();return;}
  selectedWeek=current.week;renderSync();
- if(current.weightKg.avg===undefined){
+ if(current.week===18||current.week===19){
+   const w=current,start=weekStart(w.week),end=addDays(start,6);
+   const reason=w.week===18?'因 11/14 起出國，整週不列入統計':'因出國及返國後紀錄不完整，整週不列入統計';
+   const dailyMap=Object.fromEntries(DATA.daily.map(d=>[d.date,d]));
+   const cells=Array.from({length:7},(_,i)=>{
+     const d=addDays(start,i),x=dailyMap[d];
+     return '<div class="cell '+(Number.isFinite(x?.weightKg)?'':'none')+'">'+wd(d)+'<b>'+(Number.isFinite(x?.weightKg)?fmt(x.weightKg):'不列入紀錄')+'</b></div>';
+   }).join('');
+   $('#v-week').innerHTML='<div class="stack"><div><h1 id="h-week">第 '+w.week+' 週｜已結案・出國排除</h1><p class="sub">'+md(start)+'（'+wd(start)+'）到 '+md(end)+'（'+wd(end)+'）</p></div><section class="panel"><h2>因出國關係，不列入計算</h2><p>'+reason+'</p><p class="small muted">既有每日紀錄保留，不補零；本週不列入週平均、達標率與減脂趨勢比較。</p><h3 class="small muted" style="margin:18px 0 8px">每日體重（僅供歷史查閱）</h3><div class="strip">'+cells+'</div></section></div>';
+ }else if(current.weightKg.avg===undefined){
    const start=weekStart(current.week),end=addDays(start,6);
    $('#v-week').innerHTML='<div class="stack"><div><h1 id="h-week">第 '+current.week+' 週｜進行中</h1><p class="sub">'+md(start)+'（'+wd(start)+'）到 '+md(end)+'（'+wd(end)+'）</p></div><section class="panel"><h2>本週等待正式同步</h2><p>目前 Firestore 尚無本週可計算的晨重紀錄。請先在 ChatGPT 回報；每天 23:00 後由你確認「今日結案，更新網站」，完成授權寫入與讀回核對後，這裡才會更新。</p><p class="small muted">歷史週報保留既有結案數值；未回報不補值、不當作零。ChatGPT 到 Firestore 的自動寫入串接尚未啟用。</p></section></div>';
  }else renderWeek();
