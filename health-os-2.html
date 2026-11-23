@@ -493,7 +493,8 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#syn
 // 週平均體重：每週固定位置、干擾週灰底、排除週空心點、連到排除週的線段改虛線
 function weightChart(list, { w = 680, h = 240, selected = null, mini = false } = {}) {
   const padL = mini ? 8 : 44, padR = mini ? 8 : 16, padT = mini ? 10 : 18, padB = mini ? 24 : 34;
-  const vals = list.filter((x) => x.weightKg.avg !== undefined).map((x) => x.weightKg.avg);
+  const vals = list.filter((x) => Number.isFinite(x.weightKg.avg)).map((x) => x.weightKg.avg);
+  if(!vals.length)return '<p class="muted">尚無可用的正式體重趨勢。</p>';
   const lo = Math.floor(Math.min(...vals) - 0.3), hi = Math.ceil(Math.max(...vals) + 0.3);
   const n0 = list[0].week, n1 = list[list.length - 1].week;
   const step = (w - padL - padR) / Math.max(1, n1 - n0);
@@ -596,7 +597,7 @@ function renderWeek() {
 
   if (w.proteinReportedDays) notes.push([`蛋白質 ${w.proteinReportedDays} 天中有 ${w.proteinTargetHitDays} 天達 ${T.proteinMinG} g`, `日均 ${fmt(w.proteinG.avg, 0)} g${w.proteinG.includesEstimate ? '，含估算值' : ''}；目標 ${T.proteinMinG}–${T.proteinMaxG} g。`]);
   if (missing.length) notes.push([`${missing.map((d) => `${md(d)}（${wd(d)}）`).join('、')} 在 Firestore 缺少每日體重`, w.weightKg.historicalOfficial ? `本週 ${fmt(w.weightKg.avg,2)} kg 採歷史正式結案平均，不是以目前 Firestore ${w.reportedDays} 天重新計算；請勿將資料庫缺筆誤判為當天未回報。` : `目前週平均以 ${w.weightKg.n} 天計算，缺少的每日紀錄未納入。`]);
-  if (w.week===18 || w.week===19) notes.unshift(['因出國關係，不列入計算', w.week===18?'11/14–11/15出國排除；11/09–11/13有資料者納入統計。':'11/16–11/18出國排除；11/19–11/22無紀錄，週平均不計算。']);
+  if (w.week===18 || w.week===19) notes.unshift(['因出國關係，整週不列入計算', w.week===18?'11/14起出國，Week 18 整週不列入週平均及達標率；11/09–11/13既有紀錄保留。':'出國及返國後紀錄不完整，Week 19 整週不列入週平均及達標率；既有紀錄保留。']);
   if (w.waterMl.n > 0 && w.waterMl.n < w.reportedDays) notes.push([`飲水只有 ${w.waterMl.n} 天有紀錄`, `有紀錄的日均 ${fmt(w.waterMl.avg, 0)} ml，紀錄天數太少，暫不判讀。`]);
   // 從已存在的週報判讀與來源資訊生成提醒，避免出現整塊空白。
   if (w.interference?.includes('illness') || w.interference?.includes('dehydration')) {
@@ -751,6 +752,7 @@ function renderTrend() {
       </div>
     </section>
 
+    <section class="panel" aria-label="出國排除週說明"><h2>出國期間｜週報排除說明</h2><p>第 18 週（11/09–11/15）：11/14 起出國，整週不列入統計，既有每日紀錄保留。</p><p>第 19 週（11/16–11/22）：出國及返國後紀錄不完整，整週不列入統計，既有每日紀錄保留。</p><p class="small muted">兩週不列入週平均、達標率與減脂趨勢比較；不以零補值。</p></section>
     <div class="chips" role="group" aria-label="選擇週次">
       ${[...weeks].reverse().map((x) => `<button type="button" class="chip" data-week="${x.week}" aria-pressed="${x.week === selectedWeek}">第 ${x.week} 週${x.excludeFromFatLoss ? '<i class="x" aria-label="干擾週"></i>' : ''}</button>`).join('')}
     </div>
@@ -1168,9 +1170,11 @@ async function loadRealData(user){
    if(existingWeekNumbers.has(n))continue;
    const ds=DATA.daily.filter(d=>weekNo(d.date)===n&&Number.isFinite(d.weightKg));
    const avg=ds.length?ds.reduce((sum,d)=>sum+d.weightKg,0)/ds.length:undefined;
-   normalized.push({week:n,status:'closed',reportedDays:ds.length,weightKg:{avg,n:ds.length},proteinG:{avg:undefined,n:0},proteinTargetHitDays:0,proteinReportedDays:0,trainingDays:0,trainingReportedDays:0,sleepH:{avg:undefined,n:0},waterMl:{avg:undefined,n:0},kcal:{avg:undefined,n:0},interference:['travel'],excludeFromFatLoss:n===19,note:n===19?'因出國關係，不列入計算；11/19–11/22無可用紀錄。':'11/14–11/15因出國關係，不列入計算；僅統計11/09–11/13已有資料。',strategy:''});
+   normalized.push({week:n,status:'closed',reportedDays:ds.length,weightKg:{avg,n:ds.length},proteinG:{avg:undefined,n:0},proteinTargetHitDays:0,proteinReportedDays:0,trainingDays:0,trainingReportedDays:0,sleepH:{avg:undefined,n:0},waterMl:{avg:undefined,n:0},kcal:{avg:undefined,n:0},interference:['travel'],excludeFromFatLoss:true,note:n===19?'因出國及返國後紀錄不完整，整週不列入統計；既有紀錄保留。':'因11/14起出國造成紀錄不完整，整週不列入統計；既有紀錄保留。',strategy:''});
    existingWeekNumbers.add(n);
  }
+ // W18/W19 整週排除，既有每日紀錄不刪除。
+ for(const w of normalized){if(w.week===18||w.week===19){w.excludeFromFatLoss=true;w.interference=[...new Set([...(w.interference||[]),'travel'])];w.status='closed';w.note=w.week===18?'因11/14起出國，整週不列入統計；既有紀錄保留。':'因出國及返國後紀錄不完整，整週不列入統計；既有紀錄保留。';}}
  const dailyForWeek=week=>DATA.daily.filter(d=>weekNo(d.date)===week&&typeof d.weightKg==='number');
  for(const w of normalized){const ds=dailyForWeek(w.week);w.weightKg.n=w.weightKg.historicalOfficial?(w.weightKg.n||ds.length):(ds.length||w.weightKg.n);w.reportedDays=ds.length;w.officialWeightDays=w.weightKg.historicalOfficial?(w.weightKg.n||0):null;for(const [field,key] of [['sleepH','sleepH'],['waterMl','waterMl'],['proteinG','proteinG'],['kcal','kcal']]){const vals=DATA.daily.filter(d=>weekNo(d.date)===w.week&&typeof d[key]==='number').map(d=>d[key]);if(vals.length && !w[field]?.historical){w[field]={avg:vals.reduce((a,b)=>a+b,0)/vals.length,n:vals.length}}}}
  // 各週均由已入庫每日營養估算計算覆蓋率與區間，不只計算首頁目前週次。
@@ -1199,7 +1203,11 @@ async function loadRealData(user){
      const draft={week:actualWeek,status:'open',reportedDays:weekDays.length,weightKg:{avg,n:weekDays.length},proteinG:{avg:undefined,n:0},proteinTargetHitDays:0,proteinReportedDays:0,trainingDays:0,trainingReportedDays:0,sleepH:{avg:undefined,n:0},waterMl:{avg:undefined,n:0},kcal:{avg:undefined,n:0},interference:[],excludeFromFatLoss:false,note:'當週未結案；僅顯示已核對並同步至 Firestore 的資料',strategy:''};
      DATA.weeks.push(draft);DATA.weeks.sort((a,b)=>a.week-b.week);byWeek[actualWeek]=draft;
    }
-   current=byWeek[actualWeek];
+   // 僅以已正式結案且入庫的晨重決定新週是否啟用；排除出國週。
+   const publishedWeeks=all.daily.filter(d=>d.status==='closed'&&Number.isFinite(d.weightKg)&&/^\d{4}-\d{2}-\d{2}$/.test(d.date||d.id||'')).map(d=>weekNo(d.date||d.id));
+   const lastPublished=Math.max(0,...publishedWeeks);
+   const eligible=DATA.weeks.filter(w=>w.week<=actualWeek&&Number.isFinite(w.weightKg.avg)&&!w.excludeFromFatLoss&&(w.status==='closed'||w.week===lastPublished));
+   current=eligible.at(-1)||null;
    const prior=byWeek[actualWeek-1];
    if(prior&&current.weightKg.avg!==undefined&&prior.weightKg.avg!==undefined){
      current.vsPrevWeek={deltaKg:current.weightKg.avg-prior.weightKg.avg,comparable:!prior.excludeFromFatLoss&&!current.excludeFromFatLoss};
