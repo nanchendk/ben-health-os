@@ -731,6 +731,7 @@ function renderTrend() {
 
   const strip = hasDaily ? `<h3 class="small muted" style="margin:18px 0 8px">每日體重</h3><div class="strip">${Array.from({ length: 7 }, (_, i) => {
     const d = addDays(start, i), x = dailyMap[d];
+    if ((w.week===18 || w.week===19) && !(typeof x?.weightKg === 'number')) return `<div class="cell none">${wd(d)}<b>不列入紀錄</b></div>`;
     if (d > dataThrough) return `<div class="cell future">${wd(d)}<b>未到</b></div>`;
     if (typeof x?.weightKg !== 'number') return `<div class="cell none">${wd(d)}<b>${w.weightKg.historicalOfficial?'資料庫缺筆':'未有紀錄'}</b></div>`;
     return `<div class="cell">${wd(d)}<b>${fmt(x.weightKg)}</b></div>`;
