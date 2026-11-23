@@ -997,17 +997,35 @@ function renderMedicalUnlocked(){
   if(!stagedPrivateMedical||!medicalKey||!activeUser)return;
   const btn=$('#medImportConfirm'),status=$('#medImportPreview');btn.disabled=true;
   try{
-   let saved=0,skipped=0;
+   let saved=0,skipped=0,completed=0;
    for(const item of stagedPrivateMedical){
     const ref=doc(db,'users',activeUser.uid,'medicalEncrypted',item.id);
-    if((await getDoc(ref)).exists()){skipped++;continue;}
+    const existing=await getDoc(ref);
+    if(existing.exists()){
+     // 只補齊既有紀錄缺少的檢驗項目，絕不覆蓋原本已儲存的數值。
+     const previous=await decryptDoc(medicalKey,existing.data());
+     const merged={...previous};
+     let added=0;
+     for(const field of ['metrics','blood','urine']){
+      if(!item.data[field]||typeof item.data[field]!=='object')continue;
+      const before=previous[field]&&typeof previous[field]==='object'?previous[field]:{};
+      const next={...before};
+      for(const [key,value] of Object.entries(item.data[field])){
+       if(next[key]===undefined||next[key]===null||next[key]===''){next[key]=value;added++;}
+      }
+      merged[field]=next;
+     }
+     if(added){await setDoc(ref,await encryptDoc(medicalKey,merged));completed++;}
+     else skipped++;
+     continue;
+    }
     await setDoc(ref,await encryptDoc(medicalKey,item.data));saved++;
    }
    const snapshot=await getDocs(collection(db,'users',activeUser.uid,'medicalEncrypted'));
    medicalRecords=await Promise.all(snapshot.docs.map(async d=>({id:d.id,data:await decryptDoc(medicalKey,d.data())})));
    stagedPrivateMedical=null;
    renderMedicalUnlocked();
-   const msg=$('#medImportPreview');if(msg)msg.textContent='完成：新增 '+saved+' 筆，既有 '+skipped+' 筆已跳過。';
+   const msg=$('#medImportPreview');if(msg)msg.textContent='完成：新增 '+saved+' 筆、補齊 '+completed+' 筆、無需更新 '+skipped+' 筆。';
   }catch(e){status.textContent='未全部完成：'+(e.code||e.message||e)+'。可重新匯入，已存在的紀錄不會重複覆蓋。';btn.disabled=false;}
  };
 
