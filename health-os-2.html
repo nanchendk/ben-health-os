@@ -721,9 +721,12 @@ function renderTrend() {
   const start = weekStart(w.week), end = addDays(start, 6);
   const dailyMap = Object.fromEntries(DATA.daily.map((d) => [d.date, d]));
   const hasDaily = DATA.daily.some((d) => weekNo(d.date) === w.week) || w.weightKg.historicalOfficial;
-  const vs = w.vsPrevWeek
-    ? (w.vsPrevWeek.comparable ? `<strong>${signed(w.vsPrevWeek.deltaKg, 2)} kg</strong><em>與第 ${w.week - 1} 週相比</em>` : `<strong>不比較</strong><em>${byWeek[w.week].excludeFromFatLoss ? '本週為干擾週' : `第 ${w.week - 1} 週為干擾週`}</em>`)
-    : '<strong>—</strong><em>沒有前一週資料</em>';
+  const travelReason = w.week === 18 ? '因 11/14 起出國，整週不列入統計' : w.week === 19 ? '因出國及返國後紀錄不完整，整週不列入統計' : null;
+  const vs = travelReason
+    ? `<strong>不比較</strong><em>${travelReason}</em>`
+    : w.vsPrevWeek
+      ? (w.vsPrevWeek.comparable ? `<strong>${signed(w.vsPrevWeek.deltaKg, 2)} kg</strong><em>與第 ${w.week - 1} 週相比</em>` : `<strong>不比較</strong><em>${byWeek[w.week].excludeFromFatLoss ? '本週為干擾週' : `第 ${w.week - 1} 週為干擾週`}</em>`)
+      : '<strong>—</strong><em>沒有前一週資料</em>';
   const stat = (o, d, unit) => (o?.historical ? `<strong>${esc(o.rangeText||fmt(o.avg,d)+' '+unit)}</strong><em>歷史結案估算${o.sourceLabel?' · '+esc(o.sourceLabel):''}</em>` : o.n ? `<strong>${fmt(o.avg, d)} ${unit}</strong><em>${o.n} 天有紀錄${o.includesEstimate ? '，含估算' : ''}</em>` : '<strong class="muted">無可靠週平均</strong><em>已有餐點資料，但未證實七日完整攝取</em>');
 
   const strip = hasDaily ? `<h3 class="small muted" style="margin:18px 0 8px">每日體重</h3><div class="strip">${Array.from({ length: 7 }, (_, i) => {
