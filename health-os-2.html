@@ -592,10 +592,11 @@ function renderWeek() {
   // 依規則產生、附上依據的提醒（不寫沒有依據的建議）
   const notes = [];
   const missing = [];
-  for (let i = 0; i < 7; i++) { const d = addDays(start, i); if (d <= dataThrough && typeof dailyMap[d]?.weightKg !== 'number') missing.push(d); }
+  for (let i = 0; i < 7; i++) { const d = addDays(start, i); if (d <= dataThrough && typeof dailyMap[d]?.weightKg !== 'number' && !(d >= '2026-11-14' && d <= '2026-11-22')) missing.push(d); }
 
   if (w.proteinReportedDays) notes.push([`蛋白質 ${w.proteinReportedDays} 天中有 ${w.proteinTargetHitDays} 天達 ${T.proteinMinG} g`, `日均 ${fmt(w.proteinG.avg, 0)} g${w.proteinG.includesEstimate ? '，含估算值' : ''}；目標 ${T.proteinMinG}–${T.proteinMaxG} g。`]);
   if (missing.length) notes.push([`${missing.map((d) => `${md(d)}（${wd(d)}）`).join('、')} 在 Firestore 缺少每日體重`, w.weightKg.historicalOfficial ? `本週 ${fmt(w.weightKg.avg,2)} kg 採歷史正式結案平均，不是以目前 Firestore ${w.reportedDays} 天重新計算；請勿將資料庫缺筆誤判為當天未回報。` : `目前週平均以 ${w.weightKg.n} 天計算，缺少的每日紀錄未納入。`]);
+  if (w.week===18 || w.week===19) notes.unshift(['因出國關係，不列入計算', w.week===18?'11/14–11/15出國排除；11/09–11/13有資料者納入統計。':'11/16–11/18出國排除；11/19–11/22無紀錄，週平均不計算。']);
   if (w.waterMl.n > 0 && w.waterMl.n < w.reportedDays) notes.push([`飲水只有 ${w.waterMl.n} 天有紀錄`, `有紀錄的日均 ${fmt(w.waterMl.avg, 0)} ml，紀錄天數太少，暫不判讀。`]);
   // 從已存在的週報判讀與來源資訊生成提醒，避免出現整塊空白。
   if (w.interference?.includes('illness') || w.interference?.includes('dehydration')) {
@@ -1162,6 +1163,14 @@ async function loadRealData(user){
    normalized.push({week:n,status:n<weekNo(DATA.today)?'closed':'open',reportedDays:days.length,weightKg:{avg,n:days.length},proteinG:{avg:undefined,n:0},proteinTargetHitDays:0,proteinReportedDays:0,trainingDays:0,trainingReportedDays:0,sleepH:{avg:undefined,n:0},waterMl:{avg:undefined,n:0},kcal:{avg:undefined,n:0},interference:[],excludeFromFatLoss:false,note:'由 Firestore 已結案每日紀錄產生，非獨立週結案報告',strategy:''});
    existingWeekNumbers.add(n);
  }
+ // Explicitly close travel-affected weeks without inventing missing measurements.
+ for(const n of [18,19]){
+   if(existingWeekNumbers.has(n))continue;
+   const ds=DATA.daily.filter(d=>weekNo(d.date)===n&&Number.isFinite(d.weightKg));
+   const avg=ds.length?ds.reduce((sum,d)=>sum+d.weightKg,0)/ds.length:undefined;
+   normalized.push({week:n,status:'closed',reportedDays:ds.length,weightKg:{avg,n:ds.length},proteinG:{avg:undefined,n:0},proteinTargetHitDays:0,proteinReportedDays:0,trainingDays:0,trainingReportedDays:0,sleepH:{avg:undefined,n:0},waterMl:{avg:undefined,n:0},kcal:{avg:undefined,n:0},interference:['travel'],excludeFromFatLoss:n===19,note:n===19?'因出國關係，不列入計算；11/19–11/22無可用紀錄。':'11/14–11/15因出國關係，不列入計算；僅統計11/09–11/13已有資料。',strategy:''});
+   existingWeekNumbers.add(n);
+ }
  const dailyForWeek=week=>DATA.daily.filter(d=>weekNo(d.date)===week&&typeof d.weightKg==='number');
  for(const w of normalized){const ds=dailyForWeek(w.week);w.weightKg.n=w.weightKg.historicalOfficial?(w.weightKg.n||ds.length):(ds.length||w.weightKg.n);w.reportedDays=ds.length;w.officialWeightDays=w.weightKg.historicalOfficial?(w.weightKg.n||0):null;for(const [field,key] of [['sleepH','sleepH'],['waterMl','waterMl'],['proteinG','proteinG'],['kcal','kcal']]){const vals=DATA.daily.filter(d=>weekNo(d.date)===w.week&&typeof d[key]==='number').map(d=>d[key]);if(vals.length && !w[field]?.historical){w[field]={avg:vals.reduce((a,b)=>a+b,0)/vals.length,n:vals.length}}}}
  // 各週均由已入庫每日營養估算計算覆蓋率與區間，不只計算首頁目前週次。
@@ -1181,7 +1190,7 @@ async function loadRealData(user){
  for(let i=1;i<DATA.weeks.length;i++){const a=DATA.weeks[i-1],b=DATA.weeks[i];b.vsPrevWeek={deltaKg:b.weightKg.avg-a.weightKg.avg,comparable:!a.excludeFromFatLoss&&!b.excludeFromFatLoss&&b.week===a.week+1}}
  // 首頁固定呈現 Firestore 最新有晨重紀錄的週；新週有第一筆正式紀錄後才切換，避免週一顯示空白。
  const lastRecordedDay=all.daily.filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d.date||'')&&Number.isFinite(d.weightKg)&&d.date<=DATA.today).map(d=>d.date).sort().at(-1);
- const actualWeek=weekNo(lastRecordedDay||DATA.today);
+ const actualWeek=weekNo(DATA.today);
  if(actualWeek>0 && actualWeek<=53){
    const existing=byWeek[actualWeek];
    const weekDays=DATA.daily.filter(d=>weekNo(d.date)===actualWeek&&typeof d.weightKg==='number');
