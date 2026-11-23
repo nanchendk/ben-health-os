@@ -844,22 +844,27 @@ const medVal=(entry)=>entry&&typeof entry==='object'&&'value' in entry?entry.val
 const medUnit=(entry)=>entry&&typeof entry==='object'?String(entry.unit||''):'';
 const medTable=(headers,rows)=>'<div class="tbl medical-table"><table><thead><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(v=>'<td>'+esc(v??'—')+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
 function medCompare(records,field,title){
- const sorted=records.filter(x=>x&&x.date&&x[field]&&typeof x[field]==='object').sort((a,b)=>a.date.localeCompare(b.date));
+ // 新年度在左、舊年度在右；差異固定採「最新年度－前一年度」。
+ const sorted=records.filter(x=>x&&x.date&&x[field]&&typeof x[field]==='object').sort((a,b)=>b.date.localeCompare(a.date));
  if(!sorted.length)return '';
- const keys=[...new Set(sorted.flatMap(x=>Object.keys(x[field])))];
+ const newest=sorted[0],prior=sorted.find(x=>x.date.slice(0,4)!==newest.date.slice(0,4));
+ const comparison=prior?[newest,prior]:[newest];
+ const keys=[...new Set(comparison.flatMap(x=>Object.keys(x[field])))];
  const rows=keys.map(k=>{
-  const values=sorted.map(r=>r[field][k]);
+  const values=comparison.map(r=>r[field][k]);
   const units=values.map(medUnit).filter(Boolean);
-  const comparable=values.length===2&&values.every(x=>typeof medVal(x)==='number')&&new Set(units).size<=1;
-  const delta=comparable?Number(medVal(values[1]))-Number(medVal(values[0])):null;
+  const comparable=values.length===2&&values.every(x=>typeof medVal(x)==='number'&&Number.isFinite(medVal(x)))&&new Set(units).size<=1;
+  const delta=comparable?Number(medVal(values[0]))-Number(medVal(values[1])):null;
+  const deltaText=delta===null?'缺少可比較資料':(delta>0?'↑ +':delta<0?'↓ ':'→ ')+Number(delta.toFixed(2))+(units[0]?' '+units[0]:'');
   return [MED_LABELS[k]||values.find(x=>x&&typeof x==='object'&&x.label)?.label||k,
-    ...values.map(v=>v===undefined?'—':String(medVal(v))+(medUnit(v)?' '+medUnit(v):'')),
-    ...(sorted.length===2?[delta===null?'不可比較':(delta>0?'+':'')+Number(delta.toFixed(2))]:[])
+    ...values.map(v=>v===undefined||v===null?'未提供':String(medVal(v))+(medUnit(v)?' '+medUnit(v):'')),
+    ...(prior?[deltaText]:[])
   ];
  });
- return '<section class="panel"><h2>'+esc(title)+'</h2><p class="small muted">只將相同檢驗項目、相同單位的兩次結果比較；數值變動不代表診斷。</p>'+medTable(['項目',...sorted.map(r=>r.date),...(sorted.length===2?['變化']:[])],rows)+'</section>';
+ const years=prior?newest.date.slice(0,4)+' vs '+prior.date.slice(0,4):'';
+ const note=prior?'差異＝'+newest.date.slice(0,4)+' 年－'+prior.date.slice(0,4)+' 年。↑ 上升、↓ 下降、→ 持平；僅比較同項目且單位相同的數值。':'目前只有一個年度的可用紀錄，無法計算年度變化。';
+ return '<section class="panel"><h2>'+esc(title)+(years?'｜'+years:'')+'</h2><p class="small muted">'+esc(note)+' 數值變動不代表醫療診斷；「未提供」表示目前匯入的資料缺少該項目。</p>'+medTable(['項目',...comparison.map(r=>r.date+(r===newest?'（新）':'（舊）')),...(prior?['年度變化']:[])],rows)+'</section>';
 }
-
 
 function expandPrivateHealthReport(payload){
  if(payload?.format!=='ben-health-v4-private-preview-1'||!Array.isArray(payload.clinic)||!Array.isArray(payload.annual)||!Array.isArray(payload.body))throw Error('檔案格式不符合既有私人報告規格');
