@@ -930,17 +930,17 @@ function renderMedicalUnlocked(){
  const clinicRows=byDate(labs),annualRows=byDate(annual),urineRows=byDate(urine),imageRows=byDate(scans),bodyRows=byDate(inbody);
  const renderUrine=records=>records.length?medTable(['日期','項目','結果'],records.flatMap(x=>Object.entries(x.urine||{}).map(([k,v])=>[x.date,MED_LABELS[k]||k,typeof v==='object'?JSON.stringify(v):v]))):'<section class="panel">目前沒有已匯入的尿液檢驗數據。</section>';
  const medSections={
-  clinic:{label:'定安診所',children:[
-   {key:'compare',label:'同院所比較',html:medCompare(clinicRows,'blood','血液檢驗｜同院所比較')||'<section class="panel">目前沒有可比較的診所檢驗資料。</section>'},
-   ...clinicRows.map((x,i)=>({key:'clinic'+i,label:x.date,html:single(x,'blood','定安診所血液檢驗')}))
-  ]},
-  annual:{label:'年度健檢',children:[
+  annual:{label:'公司年度健檢',children:[
    {key:'compare',label:'年度比較',html:medCompare(annualRows,'metrics','年度健檢｜同單位比較')||'<section class="panel">目前沒有可比較的年度健檢資料。</section>'},
    ...annualRows.map((x,i)=>({key:'annual'+i,label:x.date,html:single(x,'metrics','年度健檢')}))
   ]},
   imaging:{label:'影像摘要',children:[
    {key:'all',label:'歷年總覽',html:imageRows.length?medTable(['年度／日期','檢查摘要'],imageRows.map(x=>[x.date||'待核對',typeof x.imaging==='string'?x.imaging:(x.summary||'請查看原始報告')])):'<section class="panel">歷史影像摘要尚未匯入私人加密區。</section>'},
    ...imageRows.map((x,i)=>({key:'image'+i,label:String(x.date||'待核對'),html:'<section class="panel"><h2>'+esc(x.date||'影像摘要')+'</h2><p>'+esc(typeof x.imaging==='string'?x.imaging:(x.summary||'請查看原始報告'))+'</p></section>'}))
+  ]},
+  clinic:{label:'定安診所',children:[
+   {key:'compare',label:'同院所比較',html:medCompare(clinicRows,'blood','血液檢驗｜同院所比較')||'<section class="panel">目前沒有可比較的診所檢驗資料。</section>'},
+   ...clinicRows.map((x,i)=>({key:'clinic'+i,label:x.date,html:single(x,'blood','定安診所血液檢驗')}))
   ]},
   urine:{label:'尿液比較',children:[
    {key:'compare',label:'尿液比較',html:renderUrine(urineRows)},
@@ -958,10 +958,10 @@ function renderMedicalUnlocked(){
  </div></details>
  </div>`;
  $('#lockNow').onclick=()=>lockMedical();
- let selectedMedicalTab='clinic',selectedMedicalSub={};
+ let selectedMedicalTab='annual',selectedMedicalSub={};
  const switchRoot=$('#medicalSwitch');
  function showMedicalTab(){
-  const keys=Object.keys(medSections),section=medSections[selectedMedicalTab]||medSections.clinic;
+  const keys=Object.keys(medSections),section=medSections[selectedMedicalTab]||medSections.annual;
   const activeKey=selectedMedicalSub[selectedMedicalTab]&&section.children.some(x=>x.key===selectedMedicalSub[selectedMedicalTab])?selectedMedicalSub[selectedMedicalTab]:section.children[0]?.key;
   selectedMedicalSub[selectedMedicalTab]=activeKey;
   const active=section.children.find(x=>x.key===activeKey);
