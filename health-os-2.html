@@ -1038,7 +1038,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&unlockTime
 
 /* ---------------- Firebase 身分驗證與資料載入 ---------------- */
 import{initializeApp}from'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
-import{getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult,onAuthStateChanged,signOut}from'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
+import{getAuth,GoogleAuthProvider,signInWithPopup,getRedirectResult,onAuthStateChanged,signOut}from'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
 import{getFirestore,collection,getDocs,getDoc,doc,setDoc}from'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 import{firebaseConfig,ownerUid}from'./firebase-config.js';
 const auth=getAuth(initializeApp(firebaseConfig)),db=getFirestore(auth.app);
@@ -1046,9 +1046,16 @@ let activeUser=null;
 const gate=document.createElement('section');gate.className='panel';gate.style='max-width:460px;margin:48px auto;text-align:center';gate.innerHTML='<h1>Ben Health OS 2.0</h1><p>登入授權 Google 帳號後，才會讀取私人健康資料。</p><button class="primary" id="googleLogin">使用 Google 登入</button><p id="loginMsg" role="status"></p>';
 document.querySelector('main').before(gate);document.querySelector('#mobileBootStatus').hidden=true;
 document.querySelector('main').hidden=true;document.querySelector('.top').hidden=true;document.querySelector('.bottom').hidden=true;
-const isMobileBrowser=()=>/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-getRedirectResult(auth).catch(e=>{$('#loginMsg').textContent='登入返回失敗：'+(e.code||e.message)});
-$('#googleLogin').onclick=async()=>{try{const provider=new GoogleAuthProvider();if(isMobileBrowser()){await signInWithRedirect(auth,provider)}else{await signInWithPopup(auth,provider)}}catch(e){$('#loginMsg').textContent='登入失敗：'+(e.code||e.message)}};
+let loginError='',loginBusy=false;
+const showLoginError=(e,prefix='登入失敗')=>{loginError=prefix+'：'+(e.code||e.message||'未知錯誤');$('#loginMsg').textContent=loginError};
+getRedirectResult(auth).catch(e=>showLoginError(e,'登入返回失敗'));
+$('#googleLogin').onclick=async()=>{
+ if(loginBusy)return;
+ loginBusy=true;loginError='';$('#googleLogin').disabled=true;$('#loginMsg').textContent='正在進行 Google 登入…';
+ try{const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});await signInWithPopup(auth,provider)}
+ catch(e){showLoginError(e)}
+ finally{loginBusy=false;$('#googleLogin').disabled=false}
+};
 const numeric=(o,...keys)=>{for(const k of keys)if(typeof o?.[k]==='number')return o[k];return undefined};
 function normalizeWeek(r){
  const raw=String(r.week??r.id??''); const hit=raw.match(/(?:^|[^0-9])W(?:eek)?\s*0?(\d{1,2})(?!\d)/i)||raw.match(/^\s*(\d{1,2})\s*$/); const week=hit?Number(hit[1]):null;
@@ -1273,7 +1280,7 @@ onAuthStateChanged(auth,async user=>{
  lockMedical(false);activeUser=null;
  const allowed=!!user&&user.uid===ownerUid&&user.providerData.some(p=>p.providerId==='google.com');
  document.querySelector('#mobileBootStatus').hidden=true;gate.hidden=allowed;document.querySelector('main').hidden=!allowed;document.querySelector('.top').hidden=!allowed;document.querySelector('.bottom').hidden=!allowed;
- if(!allowed){$('#loginMsg').textContent=user?'這個帳號未獲授權':'請使用 Google 帳號登入';return}
+ if(!allowed){$('#loginMsg').textContent=user?'這個帳號未獲授權':(loginError||(loginBusy?'正在進行 Google 登入…':'請使用 Google 帳號登入'));return}
  activeUser=user;
  document.querySelector('#historicalImport').hidden=false;
  try{await loadRealData(user)}catch(e){document.querySelector('main').hidden=true;gate.hidden=false;$('#loginMsg').textContent='讀取 Firestore 失敗：'+(e.code||e.message)}
